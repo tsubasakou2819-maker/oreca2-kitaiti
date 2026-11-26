@@ -49,7 +49,7 @@
   <div style="background:#1e293b; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #334155;">
     <div style="font-weight:bold; margin-bottom:6px; color:#38bdf8;">自チーム入力（序章の出現率を自動計算）</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;">
-      <<div>1体目(リーダー): <select id="p1-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p1-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <div>1体目(リーダー): <select id="p1-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p1-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
       <div>2体目: <select id="p2-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p2-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p2-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
       <div>3体目: <select id="p3-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p3-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
     <datalist id="all-monsters-list"></datalist>
@@ -133,7 +133,7 @@
           encounter_pct INTEGER DEFAULT 100,
           p1_rate REAL DEFAULT 0,
           p2_rate REAL DEFAULT 0,
-          p3_rate REAL DEFAULT 0,
+          p3_rate REAL DEFAULT 0
         );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
