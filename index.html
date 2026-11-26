@@ -49,9 +49,10 @@
   <div style="background:#1e293b; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #334155;">
     <div style="font-weight:bold; margin-bottom:6px; color:#38bdf8;">自チーム入力（序章の出現率を自動計算）</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;">
-      <div>1体目(リーダー): <input id="p1-name" type="text" placeholder="例: 赤騎士スタン" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p1-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
-      <div>2体目: <input id="p2-name" type="text" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p2-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p2-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
-      <div>3体目: <input id="p3-name" type="text" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p3-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p3-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <<div>1体目(リーダー): <input id="p1-name" type="text" list="all-monsters-list" placeholder="例: 赤騎士スタン" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p1-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <div>2体目: <input id="p2-name" type="text" list="all-monsters-list" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p2-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p2-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <div>3体目: <input id="p3-name" type="text" list="all-monsters-list" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p3-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p3-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+    <datalist id="all-monsters-list"></datalist>
     </div>
     <div style="margin-top:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
       <button type="button" onclick="applyParty()" style="background:#0284c7; color:white; border:none; padding:6px 12px; font-size:14px; cursor:pointer;">このチームで出現率を計算</button>
@@ -356,6 +357,9 @@
           );
         });
       } catch (_) {}
+      window.ALL_MONSTER_STARS = {"トロル":1,"ジバクガエル":1,"赤のプリンセス":1,"赤の王女":2,"赤の女王":3,"ガルル":1,"雪狼ガルム":3,"プチクラブ":1,"カニクラブ":4,"スライム":1,"スライム・ドラゴン":1,"スライム・シルバー":2,"スライム・ゴールド":3,"スライム・マナ":4,"プチドラゴン":1,"レッドゴン":2,"レッドラゴ":3,"レッドドラゴン":4,"戦士スタン":2,"赤騎士スタン":3,"魔法使いマナナ":2,"魔導師マナナール":3,"ボット02":2,"ボット03":3,"剣士グレン":2,"霧の剣士グレン":3,"騎士アリア":2,"親衛騎士アリア":3,"ラクシャーサ":2,"狂戦士ラクシャーサ":3,"悪鬼ラクシャーサ":4,"ドーシュ":2,"弩使いドーシュ":3,"怒涛の弩手ドーシュ":4,"ゼノゴン":2,"ゼノドラン":3,"我竜ゼノドラゴン":4,"炎の召喚士ヒート":2,"火炎召喚士ヒート":3,"炎情召喚師ヒート":4,"呪師テングリ":3,"魔獣クイックシルバー":3,"魔姫カーリィ":4,"魔王バスカー":4,"ベヒ":1,"ベヒモ":2,"ベヒモス":3,"重竜ベヒモス":4,"ランスロット":2,"湖の騎士ランスロット":3,"白の女王":3,"霧雨の将グレン":4,"ツインビー":1,"プロトタイプ Twin-Bee":4,"黒戦士スタン":2,"黒紅騎士スタン":3,"紅蓮の騎士スタン":4,"魔獣ギリメ":3,"魔王ムウス":4,"邪神バスカー":4,"ジャリゲータ":1,"ギン":1,"シブイチ":2,"シロガネ":3,"クリオネ":1,"側近アズミ":2,"忠臣アズミ":3,"チビドラゴン":1,"ブルゴン":2,"ブルドゴン":3,"ブルードラゴン":4,"コッパミジンコ":1,"ナラクジラ":4,"ゴバクガエル":2,"スライム・アビス":2,"スライム・フレア":2,"ボット02 通信型":2,"波戦士トリト":2,"波騎士トリト":3,"拳士シャッパ":2,"拳闘士シャッパ":3,"スフィ":2,"スフク":3,"スフク・ナイル":3,"ギョ":2,"ギョギョ":3,"竜宮の使いギョギョ":3,"アケロン":2,"アーケロン":3,"守護竜アーケロン":4,"海賊アンカー":2,"怒の海賊アンカー":3,"海翁アンカー":4,"小赤鬼":2,"赤鬼":3,"極赤鬼":4,"花狼ガルム":3,"乙姫マヨリ":3,"女神アルテミス":4,"魔王オロロソ":4,"泡魔法使いポワン":2,"泡魔導師ポワン":3,"赤魔導師ポワン":3,"シルバードラゴン":4,"ゴールドドラゴン":4,"ワニゲータ":3,"ソラクジラ":4,"波浪騎士トリト":4,"焔のマヨリ":4,"邪神オロロソ":4,"バクチガエル":1,"キュピィ":1,"キュピィ・怒":2,"クロドラゴン":1,"ファヴ":2,"ファヴニ":3,"暗黒竜ファヴニール":4,"ひな鳥ルフ":1,"ロック鳥ルフ":4,"スライム・アース":2,"スライム・エアロ":2,"旅人アラン":2,"発見者アラン":3,"旅人シャール":2,"放浪のシャルル":3,"トリケラ":2,"恐竜戦士トリケラ":3,"ステゴ":2,"恐竜戦士ステゴ":3,"イブリス":2,"精霊イブリス":3,"導きの精霊イブリス":4,"ドラコ":2,"ドラコギア":3,"機竜ドラコマキナ":4,"フランケンボーイ":2,"フランケン":4,"Dr.フランケン":4,"雲狼ガルム":3,"アヌビス":3,"冥界神アヌビス":4,"魔王アラキシュ":4,"鍛冶師アンヴィル":3,"プロトタイプcodeⅢ":3,"プロトタイプcodeⅣ":4,"イシス":4,"機将アクセラ":4,"機臣ブレイク":4,"無幻銃士ダルタン":4,"邪神アラキシュ":4,"ドラコッコ":1,"ケツアル":2,"ケツアルカトル":3,"龍神ククルカン":4,"森の子クルミ":1,"神楽アオイ":3,"神楽アカネ":3,"バク":1,"夢獣バク":4,"風のナギ":2,"疾風のナギ":3,"公子イスル":2,"魔公子イスル":3,"ミズチ":2,"オオミズチ":3,"涙竜ナキサワメ":4,"シナプ":2,"シナプス":3,"信獣シナプス":4,"ドラン":2,"竜人ドラン":3,"真竜人ドラン":4,"オニワカ":2,"僧兵オニワカ":3,"風隠坊オニワカ":4,"オグナ":2,"ヤマト":4,"月狼ガルム":3,"アメノウズメ":3,"女神アメノウズメ":4,"風隠の族長オロシ":4,"魔王ソジュ":4,"剣客ヒエン":2,"剣豪ヒエン":3,"剣聖ヒエン":4,"風隠の主ナナワライ":4,"烈風のナギ":4,"水天のナギ":4,"魔王子イスル":4,"邪神ソジュ":4,"スライム・デビル":1,"マンダー":1,"ラマンダー":2,"サラマンダー":3,"炎竜サラマンダー":4,"ブブ":1,"魔王ベルゼブブ":4,"アルレッキーノ":1,"狂魔アルルカン":4,"悪魔マクス":2,"魔騎士マクス":3,"衛生兵ラプラ":2,"救命士ラプラ":3,"フルド":2,"フルドフォルク":3,"アルフ":2,"アルフリック":3,"エスティ":2,"悪魔エスティ":3,"彩魔エストリエ":4,"重戦士クラン":2,"重装騎士クラン":3,"堅牢騎士クラン":4,"アスタ":2,"悪魔アスタロ":3,"魔公爵アスタロト":4,"デメラ":2,"悪魔デメララ":3,"夜魔デメララ":4,"魔女ロジェステ":3,"スカーレッド・ドラゴン":4,"魔皇エラドーラ":4,"イルベン":2,"イルベガ":3,"大角竜イルベガン":4,"禁断のフルドフォルク":4,"豪魔騎士マクス":4,"絶命士ラプラ":3,"大魔女ロジェステ":4,"邪帝エラドーラ":4,"スライム・エンジェル":1,"バト":1,"アルカ":2,"アルカード":3,"フロス":1,"フロドラ":2,"フロスドラゴ":3,"凍竜フロストドラゴン":4,"コタコン":1,"オータコン":4,"モアイ":2,"古代兵器モアイ":4,"トゥルース":2,"鏡の精トゥルース":3,"歌士ヴェッチ":2,"ボーカリスト・ヴェッチ":3,"奏士チューン":2,"ギタリスト・チューン":3,"ボット02 拍子型":2,"人魚セイレン":2,"魔人魚セイレン":3,"奈落の人魚セイレン":4,"アイシー":2,"アイシクル":3,"アバランシェ":4,"イエティ":3,"イエイエティ":4,"トール":4,"女神ノート":4,"グランブルー・ドラゴン":4,"魔皇ミード":4,"リフゴン":2,"リフレゴン":3,"鏡竜リフレクドラゴン":4,"真実の精トゥルース":4,"ドラキュラ":4,"ミカエ":3,"ラファエル":3,"ガブリエル":3,"大天使ミカエル":4,"アーティスト・ヴェッチ":4,"ボット03 弦楽型":3,"ヘイムダル":3,"虹眼のヘイムダル":4,"邪帝ミード":4,"ジュバクガエル":1,"アルラ":1,"アルラウネ":2,"パール":1,"パドラ":2,"ホワイドラゴ":3,"ホワイトドラゴン":4,"グリ":1,"死神グリム":3,"墓守エルメ":2,"夜の騎士エルメ":3,"死神見習いタナト":2,"死神タナト":3,"聖堂騎士ユーグ":2,"聖堂騎士長ユーグ":3,"成聖正騎士ユーグ":4,"僧侶クリフ":2,"大僧侶クリフ":3,"大司教クリフ":4,"ラダ":2,"ラダマンティス":3,"死神ラダマンティス":4,"獄卒ゴズ":3,"獄卒メズ":3,"死神モート":3,"死神王モート":4,"アテナ":3,"女神パラスアテナ":4,"死霊使いワイト":4,"漆黒竜ファヴニール":4,"魔皇アウスレーゼ":4,"ボーン":1,"ボーンド":2,"ボーンドラゴ":3,"スカルボーンドラゴン":4,"不動の死神タナト":4,"ダイヤ":2,"光の戦士ダイヤ":3,"命の騎士ダイヤ":4,"獄長牛頭馬頭":4,"不死鳥フェニックス":4,"デュラ":2,"デュラハン":3,"首無騎士デュラハン":4,"邪帝アウスレーゼ":4,"クリスタルドラゴン":4,"サード・ゼノドラゴン":4,"クロシド・ゼノドラゴン":4,"シトリン・ゼノドラゴン":4,"プラシオ・ゼノドラゴン":4,"トレーニー・アリア":3,"破壊神マハデーヴァ":4,"スライム・トリフ":3,"魔王リヴィエール":4,"トレーニー・シャッパ":3,"オーディン":4,"魔王レオナーレ":4,"獄王閻魔":4,"大魔王バスカー":4,"大魔王ムウス":4,"大魔王オロロソ":4,"大魔王アラキシュ":4,"大魔王ソジュ":4,"天竜騎士スタン":4,"天竜騎士グレン":4,"天竜騎士トリト":4,"天竜騎士マヨリ":4,"天竜騎士アラン":4,"天竜騎士イブリス":4,"天竜騎士ナギ":4,"天竜騎士イスル":4,"竜血の魔王バスカー":4,"竜血の魔王オロロソ":4,"竜血の魔王アラキシュ":4,"竜血の魔王ソジュ":4,"龍王ライシーヤ":4,"商人アリ":2,"大商人アリバ":3,"大富豪アリバ":4,"フリーレン":2,"葬送のフリーレン":3};
+      document.getElementById("all-monsters-list").innerHTML =
+        Object.keys(window.ALL_MONSTER_STARS).map(n => `<option value="${n}">`).join("");
 
       render();
     }
@@ -575,6 +579,24 @@
         `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}`;
       render();
     }
+    [1, 2, 3].forEach(i => {
+      const nameInput = document.getElementById(`p${i}-name`);
+      const starInput = document.getElementById(`p${i}-star`);
+      const lvInput = document.getElementById(`p${i}-lv`);
+      const updateSummary = () => {
+        const name = nameInput.value.trim();
+        if (window.ALL_MONSTER_STARS && window.ALL_MONSTER_STARS[name]) {
+          starInput.value = window.ALL_MONSTER_STARS[name];
+        }
+        const s = [1, 2, 3].reduce((acc, k) => acc + (Number(document.getElementById(`p${k}-star`).value) || 0), 0);
+        const l = [1, 2, 3].reduce((acc, k) => acc + (Number(document.getElementById(`p${k}-lv`).value) || 0), 0);
+        const b = s <= 6 ? "3-6" : s <= 9 ? "7-9" : "10-12";
+        document.getElementById("party-info").textContent = `クラス合計: ${s} (${b}) / 合計Lv: ${l}`;
+      };
+      nameInput.addEventListener("input", updateSummary);
+      starInput.addEventListener("input", updateSummary);
+      lvInput.addEventListener("input", updateSummary);
+    });
     init();
   </script>
 </body>
