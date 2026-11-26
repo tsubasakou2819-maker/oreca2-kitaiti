@@ -48,10 +48,10 @@
           sp INTEGER,
           cmd INTEGER
         );
-        INSERT INTO monsters （id,name,chapter,hp,at,sp,cmd)VALUES
+        INSERT INTO monsters (id,name,chapter,hp,at,sp,cmd)VALUES
          (1, 'トロル', '序章', 1, 1, 1, 1),
 
-(2, 'ジバクガエル', '序章', 1, 1, 1, 1),
+         (2, 'ジバクガエル', '序章', 1, 1, 1, 1),
 
 (3, '赤のプリンセス', '序章', 1, 1, 1, 1),
 
@@ -404,8 +404,8 @@
         SELECT
           name AS モンスター名,
           chapter AS 章,
-          ROUND((hp_pass/6.0)*(at_pass/6.0)*(sp_pass/6.0)*(cmd_pass/6.0) * 100, 4) || '%' AS 確率,
-          ROUND(1.0 / ((hp_pass/6.0)*(at_pass/6.0)*(sp_pass/6.0)*(cmd_pass/6.0)) * 100 + 100) AS 期待金額
+          ROUND((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0) * 100, 4) || '%' AS 確率,
+          ROUND(1.0 / ((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0)) * 100 + 100) AS 期待金額
         FROM monsters
         ${whereSql}
         ORDER BY 期待金額 DESC;
