@@ -341,7 +341,7 @@
       } else if (methodFilter === "両方") {
         conditions.push("can_battle = 1 AND can_fusion = 1");
       }
-      }
+      
       if (keyword !== "") {
         conditions.push("name LIKE ?");
         whereParams.push(`%${keyword}%`);
@@ -422,7 +422,7 @@
             <td>
               <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<br>
               <small style="color: #94a3b8;">
-                ${chap} / <span style="color: ${badgeColor};">${method}</span>
+                ${chap} / ${methodHtml}
               </small>
             </td>
             <td>
