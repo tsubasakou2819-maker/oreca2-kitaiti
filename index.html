@@ -68,6 +68,24 @@
 
     }
 
+    .star-btn {
+
+      background: none;
+
+      border: none;
+
+      padding: 0 6px 0 0;
+
+      margin: 0;
+
+      font-size: 20px;
+
+      cursor: pointer;
+
+      vertical-align: middle;
+
+    }
+
   &lt;/style&gt;
 
 &lt;/head&gt;
@@ -150,6 +168,16 @@
 
     />
 
+
+
+    <label style="display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; font-size: 15px; cursor: pointer;">
+
+      <input id="markedOnly" type="checkbox" style="width: 18px; height: 18px; margin: 0;" />
+
+      <span>★マークのみ表示</span>
+
+    </label>
+
   &lt;/div&gt;
 
 
@@ -178,7 +206,7 @@
 
 
 
-      // ① テーブル作成 &amp; モンスター登録
+      // ① テーブル作成 &amp; モンスター登録（marked は初期値 0）
 
       db.run(`
 
@@ -198,7 +226,9 @@
 
           sp INTEGER,
 
-          cmd INTEGER
+          cmd INTEGER,
+
+          marked INTEGER DEFAULT 0
 
         );
 
@@ -548,19 +578,19 @@
 
 
 
-      // ② 保存していた条件があればSQLに復元
+      // ② 保存していた条件・マークがあればSQLに復元
 
       try {
 
         const saved = JSON.parse(localStorage.getItem(&quot;oreca2_sql_saved&quot;) || &quot;[]&quot;);
 
-        saved.forEach(([id, hp, at, sp, cmd]) =&gt; {
+        saved.forEach(([id, hp, at, sp, cmd, marked = 0]) =&gt; {
 
           db.run(
 
-            &quot;UPDATE monsters SET hp = ?, at = ?, sp = ?, cmd = ? WHERE id = ?&quot;,
+            &quot;UPDATE monsters SET hp = ?, at = ?, sp = ?, cmd = ?, marked = ? WHERE id = ?&quot;,
 
-            [hp, at, sp, cmd, id]
+            [hp, at, sp, cmd, marked, id]
 
           );
 
@@ -576,6 +606,26 @@
 
 
 
+    function saveAll() {
+
+      try {
+
+        const res = db.exec(
+
+          &quot;SELECT id, hp, at, sp, cmd, marked FROM monsters WHERE hp != 1 OR at != 1 OR sp != 1 OR cmd != 1 OR marked != 0&quot;
+
+        );
+
+        const data = res.length &gt; 0 ? res[0].values : [];
+
+        localStorage.setItem(&quot;oreca2_sql_saved&quot;, JSON.stringify(data));
+
+      } catch (_) {}
+
+    }
+
+
+
     function render() {
 
       const chap = document.getElementById(&quot;chapter&quot;).value;
@@ -585,6 +635,8 @@
       const keyword = document.getElementById(&quot;search&quot;).value.trim();
 
       const fusionRolls = Math.max(1, Number(document.getElementById(&quot;fusionRolls&quot;).value) || 1);
+
+      const markedOnly = document.getElementById(&quot;markedOnly&quot;).checked;
 
 
 
@@ -618,6 +670,12 @@
 
       }
 
+      if (markedOnly) {
+
+        conditions.push(&quot;marked = 1&quot;);
+
+      }
+
 
 
       const whereSql = conditions.length &gt; 0 ? &quot;WHERE &quot; + conditions.join(&quot; AND &quot;) : &quot;&quot;;
@@ -630,7 +688,7 @@
 
         SELECT
 
-          id, name, chapter, method, hp, at, sp, cmd,
+          id, name, chapter, method, hp, at, sp, cmd, marked,
 
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
 
@@ -658,7 +716,7 @@
 
       if (res.length === 0) {
 
-        document.getElementById(&quot;summary&quot;).textContent = &quot;合計期待金額：0円&quot;;
+        document.getElementById(&quot;summary&quot;).textContent = &quot;合計期待金額：0円（0体）&quot;;
 
         document.getElementById(&quot;output&quot;).innerHTML = &quot;該当なし&quot;;
 
@@ -698,6 +756,8 @@
 
       let total = 0;
 
+      const count = res[0].values.length;
+
       let html = `
 
         &lt;table&gt;
@@ -720,7 +780,7 @@
 
       const gcd = (a, b) =&gt; b === 0 ? a : gcd(b, a % b);
 
-      res[0].values.forEach(([id, name, chap, method, hp, at, sp, cmd, pct, cost]) =&gt; {
+      res[0].values.forEach(([id, name, chap, method, hp, at, sp, cmd, marked, pct, cost]) =&gt; {
 
         const num = hp * at * sp * cmd;
 
@@ -732,6 +792,10 @@
 
         const badgeColor = method === &quot;合体&quot; ? &quot;#34d399&quot; : &quot;#60a5fa&quot;;
 
+        const star = marked ? &quot;★&quot; : &quot;☆&quot;;
+
+        const starColor = marked ? &quot;#fbbf24&quot; : &quot;#64748b&quot;;
+
         total += Number(cost);
 
 
@@ -742,7 +806,7 @@
 
             &lt;td&gt;
 
-              ${name}&lt;br&gt;
+              &lt;button class=&quot;star-btn&quot; style=&quot;color: ${starColor};&quot; onclick=&quot;toggleMark(${id}, ${marked})&quot;&gt;${star}&lt;/button&gt;${name}&lt;br&gt;
 
               &lt;small style=&quot;color: #94a3b8;&quot;&gt;
 
@@ -790,7 +854,7 @@
 
 
 
-      document.getElementById(&quot;summary&quot;).textContent = `合計期待金額：${total.toLocaleString()}円`;
+      document.getElementById(&quot;summary&quot;).textContent = `合計期待金額：${total.toLocaleString()}円（${count}体）`;
 
       document.getElementById(&quot;output&quot;).innerHTML = html;
 
@@ -806,19 +870,21 @@
 
       db.run(`UPDATE monsters SET ${col} = ? WHERE id = ?`, [Number(val), Number(id)]);
 
+      saveAll();
+
+      render();
+
+    }
 
 
-      try {
 
-        const res = db.exec(&quot;SELECT id, hp, at, sp, cmd FROM monsters WHERE hp != 1 OR at != 1 OR sp != 1 OR cmd != 1&quot;);
+    function toggleMark(id, current) {
 
-        const data = res.length &gt; 0 ? res[0].values : [];
+      const next = current ? 0 : 1;
 
-        localStorage.setItem(&quot;oreca2_sql_saved&quot;, JSON.stringify(data));
+      db.run(&quot;UPDATE monsters SET marked = ? WHERE id = ?&quot;, [next, Number(id)]);
 
-      } catch (_) {}
-
-
+      saveAll();
 
       render();
 
@@ -833,6 +899,8 @@
     document.getElementById(&quot;methodFilter&quot;).addEventListener(&quot;change&quot;, render);
 
     document.getElementById(&quot;fusionRolls&quot;).addEventListener(&quot;input&quot;, render);
+
+    document.getElementById(&quot;markedOnly&quot;).addEventListener(&quot;change&quot;, render);
 
     init();
 
