@@ -409,7 +409,13 @@
 
 
       `);
-
+      // 保存していた条件があればSQLに復元
+      try {
+        const saved = JSON.parse(localStorage.getItem("oreca2_sql_saved") || "[]");
+        saved.forEach(([id, hp, at, sp, cmd]) => {
+          db.run("UPDATE monsters SET hp = ?, at = ?, sp = ?, cmd = ? WHERE id = ?", [hp, at, sp, cmd, id]);
+        });
+      } catch (_) {}
       render();
     }
     
@@ -504,6 +510,11 @@
       const allowed = ["hp", "at", "sp", "cmd"];
       if (!allowed.includes(col)) return;
       db.run(`UPDATE monsters SET ${col} = ? WHERE id = ?`, [Number(val), Number(id)]);
+      try {
+        const res = db.exec("SELECT id, hp, at, sp, cmd FROM monsters WHERE hp != 1 OR at != 1 OR sp != 1 OR cmd != 1");
+        const data = res.length > 0 ? res[0].values : [];
+        localStorage.setItem("oreca2_sql_saved", JSON.stringify(data));
+      } catch (_) {}
       render();
     }
 
