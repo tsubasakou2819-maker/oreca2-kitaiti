@@ -130,7 +130,10 @@
           sp INTEGER,
           cmd INTEGER,
           marked INTEGER DEFAULT 0,
-          encounter_pct INTEGER DEFAULT 100
+          encounter_pct INTEGER DEFAULT 100,
+          p1_rate REAL DEFAULT 0,
+          p2_rate REAL DEFAULT 0,
+          p3_rate REAL DEFAULT 0,
         );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
@@ -424,8 +427,16 @@
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
           ROUND(
             1.0 / (
-              (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)
-              * CASE WHEN method = 'バトル' THEN (encounter_pct / 100.0) ELSE 1.0 END
+              CASE
+                WHEN method = 'バトル' AND (p1_rate + p2_rate + p3_rate) > 0 THEN
+                  p1_rate * ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
+                  + p2_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
+                  + p3_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
+                WHEN method = 'バトル' THEN
+                  ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (encounter_pct / 100.0)
+                ELSE
+                  ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
+              END
             )
             / CASE WHEN method = '合体' THEN ? ELSE 1 END
             * 100 + 100
@@ -570,22 +581,57 @@
       const totalRes = db.exec(`SELECT COUNT(*) FROM enemy_teams WHERE chapter = '序章' AND bracket IN (${ph})`, brackets);
       const T = totalRes[0].values[0][0];
 
+      const pickProb = (total, count) => {
+        if (count <= 0 || total <= 0) return 0;
+        if (total - count < 3) return 1;
+        return 1 - comb(total - count, 3) / comb(total, 3);
+      };
+
       const mRes = db.exec("SELECT id, name FROM monsters WHERE chapter = '序章' AND can_battle = 1");
       mRes[0].values.forEach(([id, name]) => {
         const kRes = db.exec(
-          `SELECT COUNT(*) FROM enemy_teams WHERE chapter = '序章' AND bracket IN (${ph}) AND (m1 = ? OR m2 = ? OR m3 = ?)`,
-          [...brackets, name, name, name]
+          `SELECT
+             COALESCE(SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END), 0),
+             COALESCE(SUM(CASE WHEN cnt = 2 THEN 1 ELSE 0 END), 0),
+             COALESCE(SUM(CASE WHEN cnt = 3 THEN 1 ELSE 0 END), 0)
+           FROM (
+             SELECT
+               (CASE WHEN m1 = ? THEN 1 ELSE 0 END) +
+               (CASE WHEN m2 = ? THEN 1 ELSE 0 END) +
+               (CASE WHEN m3 = ? THEN 1 ELSE 0 END) AS cnt
+             FROM enemy_teams
+             WHERE chapter = '序章' AND bracket IN (${ph})
+           )
+           WHERE cnt > 0`,
+          [name, name, name, ...brackets]
         );
-        const K = kRes[0].values[0][0];
-        let pct = K === 0 ? 5 : (T - K < 3 ? 100 : Math.round((1 - comb(T - K, 3) / comb(T, 3)) * 100));
+        const [k1, k2, k3] = kRes[0].values[0];
+        const K = k1 + k2 + k3;
 
-        if (name === "魔王バスカー" && (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03")))) pct = 100;
-        if (name === "邪神バスカー" && (names[0] === "紅蓮の騎士スタン" || names[0] === "魔王ムウス")) pct = 100;
-        if (name === "魔王ムウス" && K === 0) pct = 25;
-        if (name === "魔姫カーリィ" && mainBracket === "10-12") pct = 25;
-        if (name === "ゼノゴン" && mainBracket === "3-6") pct = 50;
+        let p3 = pickProb(T, k3);
+        let p2or3 = pickProb(T, k2 + k3);
+        let pAny = pickProb(T, K);
+        let p2 = Math.max(0, p2or3 - p3);
+        let p1 = Math.max(0, pAny - p2or3);
+        let pct = K === 0 ? 5 : Math.round(pAny * 100);
 
-        db.run("UPDATE monsters SET encounter_pct = ? WHERE id = ?", [Math.max(1, pct), id]);
+        if (K === 0) {
+          p1 = 0.05; p2 = 0; p3 = 0;
+        }
+        if (name === "魔王バスカー" && (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03")))) {
+          pct = 100; p1 = 1; p2 = 0; p3 = 0;
+        }
+        if (name === "邪神バスカー" && (names[0] === "紅蓮の騎士スタン" || names.includes("魔王ムウス") && names[0] === "魔王ムウス")) {
+          pct = 100; p1 = 1; p2 = 0; p3 = 0;
+        }
+        if (name === "魔王ムウス" && K === 0) { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+        if (name === "魔姫カーリィ" && mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+        if (name === "ゼノゴン" && mainBracket === "3-6") { pct = 50; p1 = 0.50; p2 = 0; p3 = 0; }
+
+        db.run(
+          "UPDATE monsters SET encounter_pct = ?, p1_rate = ?, p2_rate = ?, p3_rate = ? WHERE id = ?",
+          [Math.max(1, pct), p1, p2, p3, id]
+        );
       });
 
       document.getElementById("party-info").textContent =
