@@ -455,11 +455,17 @@
       let html = `<table>
         <tr><th>モンスター名</th><th>条件 (H / A / S / コ)</th><th>確率</th><th>期待金額</th></tr>`;
       const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-const num = hp * at * sp * cmd, den = 1296, g = gcd(num, den);
-const frac = `${num / g}/${den / g}`;
       res[0].values.forEach(([id, name, chap, hp, at, sp, cmd, pct, cost]) => {
+        const num = hp * at * sp * cmd, den = 1296, g = gcd(num, den);
+        const frac = `${num / g}/${den / g}`;
         total += Number(cost);
         html += `<tr>
+          <td>${name}<br><small style="color:#94a3b8;">${chap}</small></td>
+          <td>${makeSelect(id, "hp", hp)} ${makeSelect(id, "at", at)} ${makeSelect(id, "sp", sp)} ${makeSelect(id, "cmd", cmd, true)}</td>
+          <td>${frac}<br><small style="color:#94a3b8;">${pct}%</small></td>
+          <td>${Number(cost).toLocaleString()}円</td>
+        </tr>`;
+      });
           <td>${name}<br><small style="color:#94a3b8;">${chap}</small></td>
           <td>${makeSelect(id, "hp", hp)} ${makeSelect(id, "at", at)} ${makeSelect(id, "sp", sp)} ${makeSelect(id, "cmd", cmd, true)}</td>
           <td>${pct}%</td>
