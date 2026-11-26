@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>オレカ2 SQL期待金額計算</title>
+  <script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 16px; background: #0f172a; color: #f8fafc; }
+    select, button { padding: 8px; font-size: 16px; margin: 4px 0; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #1e293b; }
+    th, td { border: 1px solid #334155; padding: 8px; text-align: left; font-size: 14px; }
+    th { background: #334155; }
+  </style>
+</head>
+<body>
+  <h2>オレカバトル2 SQL厳選計算</h2>
+
+  <div>
+    <label>章で絞り込み：</label>
+    <select id="chapter">
+      <option value="ALL">すべて</option>
+      <option value="序章">序章</option>
+      <option value="第1章">第1章</option>
+    </select>
+  </div>
+
+  <div id="summary" style="margin-top:12px; font-weight:bold; color:#fbbf24;"></div>
+  <div id="output">読み込み中...</div>
+
+  <script>
+    let db;
+
+    async function init() {
+      const SQL = await initSqlJs({
+        locateFile: f => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}`
+      });
+      db = new SQL.Database();
+
+      // ① SQLでテーブル作成 & モンスター登録（ここを増やしていく）
+      db.run(`
+        CREATE TABLE monsters (
+          id INTEGER PRIMARY KEY,
+          name TEXT,
+          chapter TEXT,
+          hp_pass INTEGER,
+          at_pass INTEGER,
+          sp_pass INTEGER,
+          cmd_pass INTEGER
+        );
+        INSERT INTO monsters VALUES
+          (1, '我竜ゼノドラゴン', '序章', 1, 1, 1, 1),
+          (2, 'レッドドラゴン',   '序章', 6, 1, 6, 1),
+          (3, '極赤鬼',           '第1章', 6, 6, 1, 1);
+      `);
+
+      render();
+    }
+
+    function render() {
+      const chap = document.getElementById("chapter").value;
+      const whereSql = chap === "ALL" ? "" : `WHERE chapter = '${chap}'`;
+
+      // ② SQLで確率と期待金額を計算して取得（1プレイ100円＋カード100円）
+      const sql = `
+        SELECT
+          name AS モンスター名,
+          chapter AS 章,
+          ROUND((hp_pass/6.0)*(at_pass/6.0)*(sp_pass/6.0)*(cmd_pass/6.0) * 100, 4) || '%' AS 確率,
+          ROUND(1.0 / ((hp_pass/6.0)*(at_pass/6.0)*(sp_pass/6.0)*(cmd_pass/6.0)) * 100 + 100) AS 期待金額
+        FROM monsters
+        ${whereSql}
+        ORDER BY 期待金額 DESC;
+      `;
+
+      const res = db.exec(sql);
+      if (res.length === 0) {
+        document.getElementById("output").innerHTML = "該当なし";
+        return;
+      }
+
+      const { columns, values } = res[0];
+      let total = 0;
+      let html = "<table><tr>" + columns.map(c => `<th>${c}</th>`).join("") + "</tr>";
+      values.forEach(row => {
+        total += Number(row[3]);
+        html += "<tr>" + row.map((v, i) => `<td>${i === 3 ? Number(v).toLocaleString() + "円" : v}</td>`).join("") + "</tr>";
+      });
+      html += "</table>";
+
+      document.getElementById("summary").textContent = `合計期待金額：${total.toLocaleString()}円`;
+      document.getElementById("output").innerHTML = html;
+    }
+
+    document.getElementById("chapter").addEventListener("change", render);
+    init();
+  </script>
+</body>
+</html>
