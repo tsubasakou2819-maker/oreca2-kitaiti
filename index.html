@@ -442,18 +442,21 @@
         return;
       }
 
-      const makeSelect = (id, col, current, isCmd = false) => {
+      const makeSelect = (id, label, col, current, isCmd = false) => {
         const opts = isCmd
           ? [[1, "コマ潜"], [6, "不問"]]
           : [[1, "A"], [2, "B+"], [3, "C+"], [4, "D+"], [5, "E+"], [6, "不問"]];
-        return `<select onchange="updateStat(${id}, '${col}', this.value)" style="padding:2px;font-size:12px;">` +
-          opts.map(([v, label]) => `<option value="${v}" ${v === current ? "selected" : ""}>${label}</option>`).join("") +
-          `</select>`;
+        return `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#94a3b8;">
+          <span>${label}</span>
+          <select onchange="updateStat(${id}, '${col}', this.value)" style="padding:2px 4px;font-size:12px;">
+            ${opts.map(([v, text]) => `<option value="${v}" ${v === current ? "selected" : ""}>${text}</option>`).join("")}
+          </select>
+        </label>`;
       };
 
       let total = 0;
       let html = `<table>
-        <tr><th>モンスター名</th><th>条件 (H / A / S / コ)</th><th>確率</th><th>期待金額</th></tr>`;
+        <tr><th>モンスター名</th><th>条件</th><th>確率</th><th>期待金額</th></tr>`;
       const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
       res[0].values.forEach(([id, name, chap, hp, at, sp, cmd, pct, cost]) => {
         const num = hp * at * sp * cmd, den = 1296, g = gcd(num, den);
@@ -461,7 +464,14 @@
         total += Number(cost);
         html += `<tr>
           <td>${name}<br><small style="color:#94a3b8;">${chap}</small></td>
-          <td>${makeSelect(id, "hp", hp)} ${makeSelect(id, "at", at)} ${makeSelect(id, "sp", sp)} ${makeSelect(id, "cmd", cmd, true)}</td>
+          <td>
+            <div style="display:grid;grid-template-columns:repeat(2,max-content);gap:4px 8px;">
+              ${makeSelect(id, "HP", "hp", hp)}
+              ${makeSelect(id, "攻", "at", at)}
+              ${makeSelect(id, "速", "sp", sp)}
+              ${makeSelect(id, "コ", "cmd", cmd, true)}
+            </div>
+          </td>
           <td>${frac}<br><small style="color:#94a3b8;">${pct}%</small></td>
           <td>${Number(cost).toLocaleString()}円</td>
         </tr>`;
