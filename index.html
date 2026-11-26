@@ -46,6 +46,18 @@
 </head>
 <body>
   <h2>オレカバトル2 SQL厳選計算</h2>
+  <div style="background:#1e293b; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #334155;">
+    <div style="font-weight:bold; margin-bottom:6px; color:#38bdf8;">自チーム入力（序章の出現率を自動計算）</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;">
+      <div>1体目(リーダー): <input id="p1-name" type="text" placeholder="例: 赤騎士スタン" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p1-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <div>2体目: <input id="p2-name" type="text" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p2-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p2-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+      <div>3体目: <input id="p3-name" type="text" placeholder="モンスター名" style="width:120px;padding:4px;font-size:13px;"> ★<input id="p3-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<input id="p3-lv" type="number" min="1" max="10" value="5" style="width:45px;padding:4px;font-size:13px;"></div>
+    </div>
+    <div style="margin-top:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+      <button type="button" onclick="applyParty()" style="background:#0284c7; color:white; border:none; padding:6px 12px; font-size:14px; cursor:pointer;">このチームで出現率を計算</button>
+      <span id="party-info" style="font-size:13px; color:#cbd5e1;">クラス合計: 6 / 合計Lv: 15</span>
+    </div>
+  </div>
 
   <div>
     <label>章で絞り込み：</label>
@@ -116,7 +128,8 @@
           at INTEGER,
           sp INTEGER,
           cmd INTEGER,
-          marked INTEGER DEFAULT 0
+          marked INTEGER DEFAULT 0,
+          encounter_pct INTEGER DEFAULT 100
         );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
@@ -297,6 +310,41 @@
           'スライム・アビス', 'スライム・フレア', 'スライム・アース', 'スライム・エアロ', 'アテナ'
         );
       `);
+      db.run(`
+        CREATE TABLE enemy_teams (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          chapter TEXT,
+          bracket TEXT,
+          m1 TEXT, m2 TEXT, m3 TEXT
+        );
+        INSERT INTO enemy_teams (chapter, bracket, m1, m2, m3) VALUES
+          ('序章','3-6','トロル','赤のプリンセス','ガルル'),('序章','3-6','レッドゴン','赤の王女','トロル'),
+          ('序章','3-6','スライム','スライム','スライム'),('序章','3-6','ジバクガエル','戦士スタン','スライム'),
+          ('序章','3-6','トロル','魔法使いマナナ','スライム'),('序章','3-6','プチドラゴン','ボット02','スライム'),
+          ('序章','3-6','プチクラブ','剣士グレン','スライム・シルバー'),('序章','3-6','ラクシャーサ','剣士グレン','スライム・シルバー'),
+          ('序章','3-6','ガルル','騎士アリア','スライム・シルバー'),('序章','3-6','トロル','ベヒモ','スライム・ドラゴン'),
+          ('序章','3-6','ベヒ','ランスロット','スライム'),('序章','3-6','プチクラブ','ツインビー','ガルル'),
+          ('序章','3-6','剣士グレン','黒戦士スタン','トロル'),
+          ('序章','7-9','スライム・シルバー','スライム・ゴールド','スライム'),('序章','7-9','スライム・シルバー','スライム・マナ','スライム・ゴールド'),
+          ('序章','7-9','スライム・ドラゴン','レッドラゴ','スライム・ドラゴン'),('序章','7-9','魔法使いマナナ','戦士スタン','レッドゴン'),
+          ('序章','7-9','騎士アリア','戦士スタン','ボット02'),('序章','7-9','火炎召喚士ヒート','赤騎士スタン','騎士アリア'),
+          ('序章','7-9','弩使いドーシュ','魔導師マナナール','スライム・ゴールド'),('序章','7-9','魔導師マナナール','ボット03','ラクシャーサ'),
+          ('序章','7-9','狂戦士ラクシャーサ','霧の剣士グレン','スライム・シルバー'),('序章','7-9','赤騎士スタン','親衛騎士アリア','ボット02'),
+          ('序章','7-9','炎の召喚士ヒート','ドーシュ','ガルル'),('序章','7-9','火炎召喚士ヒート','弩使いドーシュ','スライム・ゴールド'),
+          ('序章','7-9','プチドラゴン','ゼノドラン','スライム・ドラゴン'),('序章','7-9','戦士スタン','呪師テングリ','ボット02'),
+          ('序章','7-9','レッドラゴ','魔獣クイックシルバー','スライム・ドラゴン'),('序章','7-9','ランスロット','ベヒモス','スライム・ドラゴン'),
+          ('序章','7-9','呪師テングリ','湖の騎士ランスロット','ベヒ'),('序章','7-9','霧の剣士グレン','黒紅騎士スタン','ガルル'),
+          ('序章','7-9','魔獣クイックシルバー','魔獣ギリメ','魔獣クイックシルバー'),
+          ('序章','10-12','弩使いドーシュ','赤の女王','火炎召喚士ヒート'),('序章','10-12','スライム・マナ','スライム・マナ','スライム・マナ'),
+          ('序章','10-12','魔導師マナナール','赤騎士スタン','レッドラゴ'),('序章','10-12','親衛騎士アリア','赤騎士スタン','ボット03'),
+          ('序章','10-12','弩使いドーシュ','赤騎士スタン','ボット03'),('序章','10-12','狂戦士ラクシャーサ','霧の剣士グレン','魔獣クイックシルバー'),
+          ('序章','10-12','魔獣クイックシルバー','悪鬼ラクシャーサ','霧の剣士グレン'),('序章','10-12','火炎召喚士ヒート','弩使いドーシュ','ボット03'),
+          ('序章','10-12','火炎召喚士ヒート','怒涛の弩手ドーシュ','ボット03'),('序章','10-12','怒涛の弩手ドーシュ','呪師テングリ','スライム・マナ');
+      `);
+      const ENCOUNTER_RATES = {"トロル": 75, "ジバクガエル": 25, "赤のプリンセス": 25, "ガルル": 62, "プチクラブ": 45, "スライム": 91, "スライム・ドラゴン": 53, "スライム・シルバー": 62, "スライム・ゴールド": 42, "スライム・マナ": 53, "プチドラゴン": 25, "戦士スタン": 25, "魔法使いマナナ": 25, "ボット02": 25, "ゼノゴン": 50, "炎の召喚士ヒート": 16, "呪師テングリ": 30, "魔獣クイックシルバー": 71, "魔姫カーリィ": 25, "魔王バスカー": 100, "ベヒ": 25, "ランスロット": 25, "ツインビー": 25, "魔王ムウス": 25, "ジャリゲータ": 66, "ギン": 66, "クリオネ": 94, "チビドラゴン": 79, "コッパミジンコ": 88, "スライム・アビス": 46, "スライム・フレア": 49, "波戦士トリト": 46, "拳士シャッパ": 46, "スフィ": 64, "ギョ": 46, "アケロン": 27, "海賊アンカー": 18, "魔王オロロソ": 100, "泡魔法使いポワン": 27, "バクチガエル": 89, "キュピィ": 97, "クロドラゴン": 97, "ひな鳥ルフ": 100, "スライム・アース": 71, "スライム・エアロ": 49, "旅人アラン": 27, "旅人シャール": 27, "ステゴ": 43, "イブリス": 43, "ドラコ": 43, "アヌビス": 66, "魔王アラキシュ": 100, "鍛冶師アンヴィル": 49, "機臣ブレイク": 27, "ドラコッコ": 97, "森の子クルミ": 89, "バク": 97, "風のナギ": 43, "公子イスル": 43, "ミズチ": 43, "シナプ": 43, "オグナ": 88, "魔王ソジュ": 100, "剣客ヒエン": 43, "風隠の主ナナワライ": 100, "マンダー": 97, "ブブ": 92, "悪魔マクス": 71, "衛生兵ラプラ": 53, "アルフ": 30, "エスティ": 30, "アスタ": 30, "魔女ロジェステ": 58, "魔皇エラドーラ": 100, "イルベン": 30, "フロス": 82, "コタコン": 98, "モアイ": 38, "トゥルース": 38, "歌士ヴェッチ": 46, "奏士チューン": 58, "ボット02 拍子型": 46, "トール": 55, "魔皇ミード": 100, "リフゴン": 33, "ミカエ": 40, "ヘイムダル": 40, "アルラ": 62, "パール": 91, "グリ": 84, "墓守エルメ": 49, "死神見習いタナト": 45, "聖堂騎士ユーグ": 35, "獄卒ゴズ": 100, "獄卒メズ": 100, "アテナ": 67, "魔皇アウスレーゼ": 100, "ボーン": 45, "ダイヤ": 25, "デュラ": 19, "クリスタルドラゴン": 100, "トレーニー・アリア": 100, "破壊神マハデーヴァ": 100, "スライム・トリフ": 100, "魔王リヴィエール": 100, "トレーニー・シャッパ": 100, "オーディン": 100, "魔王レオナーレ": 100, "獄王閻魔": 100, "大魔王バスカー": 100, "大魔王ムウス": 100, "大魔王オロロソ": 100, "大魔王アラキシュ": 100, "大魔王ソジュ": 100, "龍王ライシーヤ": 100, "商人アリ": 100, "フリーレン": 100};
+      Object.entries(ENCOUNTER_RATES).forEach(([name, pct]) => {
+        db.run("UPDATE monsters SET encounter_pct = ? WHERE name = ?", [pct, name]);
+      });
 
       // ② 保存していた条件・マークがあればSQLに復元
       try {
@@ -354,11 +402,14 @@
 
       // ③ SQLで確率と期待金額を計算
       const sql = `
-        SELECT
-          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked,
+          SELECT
+          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct,
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
           ROUND(
-            1.0 / ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
+            1.0 / (
+              (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)
+              * CASE WHEN method = 'バトル' THEN (encounter_pct / 100.0) ELSE 1.0 END
+            )
             / CASE WHEN method = '合体' THEN ? ELSE 1 END
             * 100 + 100
           ) AS cost
@@ -401,7 +452,7 @@
       `;
 
       const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-      res[0].values.forEach(([id, name, chap, method, canBattle, canFusion, hp, at, sp, cmd, marked, pct, cost]) => {
+      res[0].values.forEach(([id, name, chap, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, pct, cost]) => {
         const num = hp * at * sp * cmd;
         const den = 1296;
         const g = gcd(num, den);
@@ -437,7 +488,10 @@
               ${frac}<br>
               <small style="color: #94a3b8;">${pct}%</small>
             </td>
-            <td>${Number(cost).toLocaleString()}円</td>
+            <td>
+              ${Number(cost).toLocaleString()}円
+              ${method === "バトル" ? `<br><small style="color:#94a3b8;">出現率 ${encPct}%</small>` : ""}
+            </td>
           </tr>
         `;
       });
@@ -474,6 +528,53 @@
     document.getElementById("methodFilter").addEventListener("change", render);
     document.getElementById("fusionRolls").addEventListener("input", render);
     document.getElementById("markedOnly").addEventListener("change", render);
+    function comb(n, r) {
+      if (r < 0 || r > n) return 0;
+      let res = 1;
+      for (let i = 1; i <= r; i++) res = res * (n - i + 1) / i;
+      return res;
+    }
+
+    function applyParty() {
+      const names = [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
+      const stars = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-star`).value) || 0);
+      const lvs = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-lv`).value) || 0);
+      const totalStar = stars.reduce((a, b) => a + b, 0);
+      const totalLv = lvs.reduce((a, b) => a + b, 0);
+
+      const mainBracket = totalStar <= 6 ? "3-6" : totalStar <= 9 ? "7-9" : "10-12";
+      const brackets = [mainBracket];
+      if (totalLv <= 10 && mainBracket === "7-9") brackets.push("3-6");
+      if (totalLv <= 10 && mainBracket === "10-12") brackets.push("7-9");
+      if (totalLv >= 21 && mainBracket === "3-6") brackets.push("7-9");
+      if (totalLv >= 21 && mainBracket === "7-9") brackets.push("10-12");
+
+      const ph = brackets.map(() => "?").join(",");
+      const totalRes = db.exec(`SELECT COUNT(*) FROM enemy_teams WHERE chapter = '序章' AND bracket IN (${ph})`, brackets);
+      const T = totalRes[0].values[0][0];
+
+      const mRes = db.exec("SELECT id, name FROM monsters WHERE chapter = '序章' AND can_battle = 1");
+      mRes[0].values.forEach(([id, name]) => {
+        const kRes = db.exec(
+          `SELECT COUNT(*) FROM enemy_teams WHERE chapter = '序章' AND bracket IN (${ph}) AND (m1 = ? OR m2 = ? OR m3 = ?)`,
+          [...brackets, name, name, name]
+        );
+        const K = kRes[0].values[0][0];
+        let pct = K === 0 ? 5 : (T - K < 3 ? 100 : Math.round((1 - comb(T - K, 3) / comb(T, 3)) * 100));
+
+        if (name === "魔王バスカー" && (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03")))) pct = 100;
+        if (name === "邪神バスカー" && (names[0] === "紅蓮の騎士スタン" || names[0] === "魔王ムウス")) pct = 100;
+        if (name === "魔王ムウス" && K === 0) pct = 25;
+        if (name === "魔姫カーリィ" && mainBracket === "10-12") pct = 25;
+        if (name === "ゼノゴン" && mainBracket === "3-6") pct = 50;
+
+        db.run("UPDATE monsters SET encounter_pct = ? WHERE id = ?", [Math.max(1, pct), id]);
+      });
+
+      document.getElementById("party-info").textContent =
+        `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}`;
+      render();
+    }
     init();
   </script>
 </body>
