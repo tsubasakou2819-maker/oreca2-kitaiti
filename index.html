@@ -72,6 +72,7 @@
       <option value="ALL">入手：すべて</option>
       <option value="バトル">バトル入手のみ</option>
       <option value="合体">合体入手のみ</option>
+      <option value="両方">両方できるのみ</option>
     </select>
 
     <label style="font-size: 14px;">合体1プレイ抽選回数：</label>
@@ -109,6 +110,8 @@
           name TEXT,
           chapter TEXT,
           method TEXT,
+          can_battle INTEGER DEFAULT 0,
+          can_fusion INTEGER DEFAULT 0,
           hp INTEGER,
           at INTEGER,
           sp INTEGER,
@@ -286,15 +289,22 @@
           (168, '龍王ライシーヤ', '外伝・コラボ', 'バトル', 1, 1, 1, 1),
           (169, '商人アリ', '外伝・コラボ', 'バトル', 1, 1, 1, 1),
           (170, 'フリーレン', '外伝・コラボ', 'バトル', 1, 1, 1, 1);
+          UPDATE monsters SET can_battle = 1 WHERE method = 'バトル';
+        UPDATE monsters SET can_fusion = 1 WHERE method = '合体';
+        UPDATE monsters SET can_battle = 1, can_fusion = 1
+        WHERE name IN (
+          'スライム・ドラゴン', 'スライム・シルバー', 'スライム・ゴールド', 'スライム・マナ',
+          'スライム・アビス', 'スライム・フレア', 'スライム・アース', 'スライム・エアロ', 'アテナ'
+        );
       `);
 
       // ② 保存していた条件・マークがあればSQLに復元
       try {
-        const saved = JSON.parse(localStorage.getItem("oreca2_sql_saved") || "[]");
-        saved.forEach(([id, hp, at, sp, cmd, marked = 0]) => {
+        const saved = JSON.parse(localStorage.getItem("oreca2_sql_saved_v2") || "[]");
+        saved.forEach(([id, method, hp, at, sp, cmd, marked = 0]) => {
           db.run(
-            "UPDATE monsters SET hp = ?, at = ?, sp = ?, cmd = ?, marked = ? WHERE id = ?",
-            [hp, at, sp, cmd, marked, id]
+            "UPDATE monsters SET method = ?, hp = ?, at = ?, sp = ?, cmd = ?, marked = ? WHERE id = ?",
+            [method, hp, at, sp, cmd, marked, id]
           );
         });
       } catch (_) {}
@@ -304,11 +314,9 @@
 
     function saveAll() {
       try {
-        const res = db.exec(
-          "SELECT id, hp, at, sp, cmd, marked FROM monsters WHERE hp != 1 OR at != 1 OR sp != 1 OR cmd != 1 OR marked != 0"
-        );
+        const res = db.exec("SELECT id, method, hp, at, sp, cmd, marked FROM monsters");
         const data = res.length > 0 ? res[0].values : [];
-        localStorage.setItem("oreca2_sql_saved", JSON.stringify(data));
+        localStorage.setItem("oreca2_sql_saved_v2", JSON.stringify(data));
       } catch (_) {}
     }
 
@@ -326,9 +334,13 @@
         conditions.push("chapter = ?");
         whereParams.push(chap);
       }
-      if (methodFilter !== "ALL") {
-        conditions.push("method = ?");
-        whereParams.push(methodFilter);
+      if (methodFilter === "バトル") {
+        conditions.push("can_battle = 1");
+      } else if (methodFilter === "合体") {
+        conditions.push("can_fusion = 1");
+      } else if (methodFilter === "両方") {
+        conditions.push("can_battle = 1 AND can_fusion = 1");
+      }
       }
       if (keyword !== "") {
         conditions.push("name LIKE ?");
@@ -343,7 +355,7 @@
       // ③ SQLで確率と期待金額を計算
       const sql = `
         SELECT
-          id, name, chapter, method, hp, at, sp, cmd, marked,
+          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked,
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
           ROUND(
             1.0 / ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
@@ -389,7 +401,7 @@
       `;
 
       const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-      res[0].values.forEach(([id, name, chap, method, hp, at, sp, cmd, marked, pct, cost]) => {
+      res[0].values.forEach(([id, name, chap, method, canBattle, canFusion, hp, at, sp, cmd, marked, pct, cost]) => {
         const num = hp * at * sp * cmd;
         const den = 1296;
         const g = gcd(num, den);
@@ -398,6 +410,12 @@
         const star = marked ? "★" : "☆";
         const starColor = marked ? "#fbbf24" : "#64748b";
         total += Number(cost);
+        const methodHtml = (canBattle && canFusion)
+          ? `<select onchange="updateMethod(${id}, this.value)" style="padding: 1px 4px; font-size: 11px; margin: 0;">
+               <option value="バトル" ${method === "バトル" ? "selected" : ""}>バトル</option>
+               <option value="合体" ${method === "合体" ? "selected" : ""}>合体</option>
+             </select> <small style="color:#fbbf24;">(両方可)</small>`
+          : `<span style="color: ${badgeColor};">${method}</span>`;
 
         html += `
           <tr>
@@ -434,6 +452,12 @@
       const allowed = ["hp", "at", "sp", "cmd"];
       if (!allowed.includes(col)) return;
       db.run(`UPDATE monsters SET ${col} = ? WHERE id = ?`, [Number(val), Number(id)]);
+      saveAll();
+      render();
+    }
+    function updateMethod(id, method) {
+      if (method !== "バトル" && method !== "合体") return;
+      db.run("UPDATE monsters SET method = ? WHERE id = ?", [method, Number(id)]);
       saveAll();
       render();
     }
