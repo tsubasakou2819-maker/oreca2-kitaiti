@@ -30,6 +30,7 @@
       <option value="第7章">第7章</option>
       <option value="外伝・コラボ">外伝・コラボ</option>
     </select>
+    <input id="search" type="text" placeholder="名前で検索..." style="padding: 8px;font-size: 16px;border-radius: 6px;margin: 4px 0;">
   </div>
 
   <div id="summary" style="margin-top:12px; font-weight:bold; color:#fbbf24;"></div>
@@ -404,7 +405,21 @@
 
     function render() {
       const chap = document.getElementById("chapter").value;
-      const whereSql = chap === "ALL" ? "" : `WHERE chapter = '${chap}'`;
+      const keyword = document.getElementById("search").value.trim();
+
+      const conditions = [];
+      const params = [];
+
+      if (chap !== "ALL") {
+        conditions.push("chapter = ?");
+        params.push(chap);
+      }
+      if (keyword !== "") {
+        conditions.push("name LIKE ?");
+        params.push(`%${keyword}%`);
+      }
+
+      const whereSql = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
 
       // ② SQLで確率と期待金額を計算して取得（1プレイ100円＋カード100円）
       const sql = `
@@ -418,7 +433,7 @@
         ORDER BY 期待金額 DESC;
       `;
 
-      const res = db.exec(sql);
+      const res = db.exec(sql,params);
       if (res.length === 0) {
         document.getElementById("output").innerHTML = "該当なし";
         return;
@@ -438,6 +453,7 @@
     }
 
     document.getElementById("chapter").addEventListener("change", render);
+    document.getElementById("search").addEventListener("input", render);
     init();
   </script>
 </body>
