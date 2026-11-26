@@ -466,12 +466,7 @@
           <td>${Number(cost).toLocaleString()}円</td>
         </tr>`;
       });
-          <td>${name}<br><small style="color:#94a3b8;">${chap}</small></td>
-          <td>${makeSelect(id, "hp", hp)} ${makeSelect(id, "at", at)} ${makeSelect(id, "sp", sp)} ${makeSelect(id, "cmd", cmd, true)}</td>
-          <td>${pct}%</td>
-          <td>${Number(cost).toLocaleString()}円</td>
-        </tr>`;
-      });
+         
       html += "</table>";
 
       document.getElementById("summary").textContent = `合計期待金額：${total.toLocaleString()}円`;
