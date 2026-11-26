@@ -424,32 +424,55 @@
       // ② SQLで確率と期待金額を計算して取得（1プレイ100円＋カード100円）
       const sql = `
         SELECT
-          name AS モンスター名,
-          chapter AS 章,
-          ROUND((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0) * 100, 4) || '%' AS 確率,
-          ROUND(1.0 / ((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0)) * 100 + 100) AS 期待金額
+          id,
+          name,
+          chapter,
+          hp, at, sp, cmd,
+          ROUND((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0) * 100, 4) AS pct,
+          ROUND(1.0 / ((hp/6.0)*(at/6.0)*(sp/6.0)*(cmd/6.0)) * 100 + 100) AS cost
         FROM monsters
         ${whereSql}
-        ORDER BY 期待金額 DESC;
+        ORDER BY cost DESC, id ASC;
       `;
 
-      const res = db.exec(sql,params);
+      const res = db.exec(sql, params);
       if (res.length === 0) {
+        document.getElementById("summary").textContent = "合計期待金額：0円";
         document.getElementById("output").innerHTML = "該当なし";
         return;
       }
 
-      const { columns, values } = res[0];
+      const makeSelect = (id, col, current, isCmd = false) => {
+        const opts = isCmd
+          ? [[1, "コマ潜"], [6, "不問"]]
+          : [[1, "A"], [2, "B+"], [3, "C+"], [4, "D+"], [5, "E+"], [6, "不問"]];
+        return `<select onchange="updateStat(${id}, '${col}', this.value)" style="padding:2px;font-size:12px;">` +
+          opts.map(([v, label]) => `<option value="${v}" ${v === current ? "selected" : ""}>${label}</option>`).join("") +
+          `</select>`;
+      };
+
       let total = 0;
-      let html = "<table><tr>" + columns.map(c => `<th>${c}</th>`).join("") + "</tr>";
-      values.forEach(row => {
-        total += Number(row[3]);
-        html += "<tr>" + row.map((v, i) => `<td>${i === 3 ? Number(v).toLocaleString() + "円" : v}</td>`).join("") + "</tr>";
+      let html = `<table>
+        <tr><th>モンスター名</th><th>条件 (H / A / S / コ)</th><th>確率</th><th>期待金額</th></tr>`;
+      res[0].values.forEach(([id, name, chap, hp, at, sp, cmd, pct, cost]) => {
+        total += Number(cost);
+        html += `<tr>
+          <td>${name}<br><small style="color:#94a3b8;">${chap}</small></td>
+          <td>${makeSelect(id, "hp", hp)} ${makeSelect(id, "at", at)} ${makeSelect(id, "sp", sp)} ${makeSelect(id, "cmd", cmd, true)}</td>
+          <td>${pct}%</td>
+          <td>${Number(cost).toLocaleString()}円</td>
+        </tr>`;
       });
       html += "</table>";
 
       document.getElementById("summary").textContent = `合計期待金額：${total.toLocaleString()}円`;
       document.getElementById("output").innerHTML = html;
+    }
+    function updateStat(id, col, val) {
+      const allowed = ["hp", "at", "sp", "cmd"];
+      if (!allowed.includes(col)) return;
+      db.run(`UPDATE monsters SET ${col} = ? WHERE id = ?`, [Number(val), Number(id)]);
+      render();
     }
 
     document.getElementById("chapter").addEventListener("change", render);
