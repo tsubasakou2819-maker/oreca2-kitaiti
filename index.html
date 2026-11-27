@@ -798,18 +798,18 @@
       const names = [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
       const stars = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-star`).value) || 0);
       const lvs = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-lv`).value) || 0);
-      const totalStar = stars.reduce((a, b) => a + b, 0);
-      const totalLv = lvs.reduce((a, b) => a + b, 0);
-      const allLv10 = lvs.every(lv => lv === 10);
 
-      const mainBracket = totalStar <= 6 ? "3-6" : totalStar <= 9 ? "7-9" : "10-12";
-      const brackets = [mainBracket];
-      if (totalLv <= 10 && mainBracket === "7-9") brackets.push("3-6");
-      if (totalLv <= 10 && mainBracket === "10-12") brackets.push("7-9");
-      if (totalLv >= 21 && mainBracket === "3-6") brackets.push("7-9");
-      if (totalLv >= 21 && mainBracket === "7-9") brackets.push("10-12");
-
-      const ph = brackets.map(() => "?").join(",");
+      const usedNames = names.filter(n => n !== "");
+      const emptySlots = 3 - usedNames.length;
+      const assistByChapter = {
+        "序章": ["戦士スタン", "魔法使いマナナ", "ボット02"],
+        "第1章": ["波戦士トリト", "拳士シャッパ", "ジャリゲータ"],
+        "第2章": ["旅人アラン"],
+        "第3章": ["風のナギ"],
+        "第4章": ["悪魔マクス"],
+        "第5章": ["歌士ヴェッチ"],
+        "第6章": ["墓守エルメ"]
+      };
       const pickProb = (total, count) => {
         if (count <= 0 || total <= 0) return 0;
         if (total - count < 3) return 1;
@@ -817,7 +817,38 @@
       };
 
       const targetChapters = ['序章', '第1章', '第2章', '第3章', '第4章', '第5章', '第6章'];
+      const assistSummary = [];
+
       targetChapters.forEach(chap => {
+        const assistPool = (assistByChapter[chap] || []).filter(n => !usedNames.includes(n));
+        const assistMonsters = assistPool.slice(0, emptySlots);
+        if (assistMonsters.length > 0) {
+          assistSummary.push(`${chap}: ${assistMonsters.join("・")}`);
+        }
+
+        const chapStars = [0, 1, 2].map(i => names[i] ? stars[i] : 0);
+        const chapLvs = [0, 1, 2].map(i => names[i] ? lvs[i] : 0);
+        let aIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (!names[i] && aIdx < assistMonsters.length) {
+            const am = assistMonsters[aIdx++];
+            chapStars[i] = (window.ALL_MONSTER_STARS && window.ALL_MONSTER_STARS[am]) || 1;
+            chapLvs[i] = 1;
+          }
+        }
+
+        const chapTotalStar = chapStars.reduce((a, b) => a + b, 0);
+        const chapTotalLv = chapLvs.reduce((a, b) => a + b, 0);
+        const allLv10 = (usedNames.length === 3 && lvs.every(lv => lv === 10));
+
+        const mainBracket = chapTotalStar <= 6 ? "3-6" : chapTotalStar <= 9 ? "7-9" : "10-12";
+        const brackets = [mainBracket];
+        if (chapTotalLv <= 10 && mainBracket === "7-9") brackets.push("3-6");
+        if (chapTotalLv <= 10 && mainBracket === "10-12") brackets.push("7-9");
+        if (chapTotalLv >= 21 && mainBracket === "3-6") brackets.push("7-9");
+        if (chapTotalLv >= 21 && mainBracket === "7-9") brackets.push("10-12");
+
+        const ph = brackets.map(() => "?").join(",");
         const totalRes = db.exec(
           `SELECT COUNT(*) FROM enemy_teams WHERE chapter = ? AND bracket IN (${ph})`,
           [chap, ...brackets]
@@ -913,6 +944,17 @@
             else if (mainBracket === "10-12") { const b = allLv10 ? 0.20 : 0.05; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
+          // お助け枠で味方に来る場合は1体確定＋敵出現分を上乗せ
+          if (assistMonsters.includes(name)) {
+            const enemy0 = K === 0 ? 1 : Math.max(0, 1 - pAny);
+            const enemy1 = K === 0 ? 0 : p1;
+            const enemy2plus = K === 0 ? 0 : (p2 + p3);
+            p1 = enemy0;
+            p2 = enemy1;
+            p3 = enemy2plus;
+            pct = 100;
+          }
+
           db.run(
             "UPDATE monsters SET encounter_pct = ?, p1_rate = ?, p2_rate = ?, p3_rate = ? WHERE id = ?",
             [Math.max(1, pct), p1, p2, p3, id]
@@ -920,10 +962,17 @@
         });
       });
 
+      const baseStar = [0, 1, 2].reduce((acc, i) => acc + (names[i] ? stars[i] : 0), 0);
+      const baseLv = [0, 1, 2].reduce((acc, i) => acc + (names[i] ? lvs[i] : 0), 0);
+      const baseBracket = baseStar <= 6 ? "3-6" : baseStar <= 9 ? "7-9" : "10-12";
+      const allLv10 = (usedNames.length === 3 && lvs.every(lv => lv === 10));
+
       document.getElementById("party-info").textContent =
-        `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}${allLv10 ? " 【全員Lv10：ボス確定枠あり】" : ""}`;
+        `クラス合計: ${baseStar} (${baseBracket}) / 合計Lv: ${baseLv}` +
+        (allLv10 ? " 【全員Lv10：ボス確定枠あり】" : "") +
+        (assistSummary.length > 0 ? ` / お助け: ${assistSummary.join(" / ")}` : "");
       render();
-    };
+    }
 
       
     [1, 2, 3].forEach(i => {
