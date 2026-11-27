@@ -538,26 +538,39 @@
       const whereSql = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
 
       // ③ SQLで確率と期待金額を計算
+      const costExpr = `
+        ROUND(
+          1.0 / (
+            CASE
+              WHEN method = 'バトル' AND (p1_rate + p2_rate + p3_rate) > 0 THEN
+                p1_rate * ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
+                + p2_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
+                + p3_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
+              WHEN method = 'バトル' THEN
+                ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (encounter_pct / 100.0)
+              ELSE
+                ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
+            END
+          )
+          / CASE WHEN method = '合体' THEN ? ELSE 1 END
+          * 100 + 100
+        )
+      `;
+
+      const markedRes = db.exec(
+        `SELECT COUNT(*), COALESCE(SUM(${costExpr}), 0) FROM monsters WHERE marked = 1`,
+        [fusionRolls]
+      );
+      const [selectedCount, selectedTotal] = markedRes[0].values[0];
+      const summaryText = selectedCount > 0
+        ? `★選んだモンスターの合計期待金額：${Number(selectedTotal).toLocaleString()}円（${selectedCount}体）`
+        : `★選んだモンスターの合計期待金額：0円（0体） ※☆を押すと合計に入ります`;
+
       const sql = `
-          SELECT
+        SELECT
           id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct, p1_rate, p2_rate, p3_rate,
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
-          ROUND(
-            1.0 / (
-              CASE
-                WHEN method = 'バトル' AND (p1_rate + p2_rate + p3_rate) > 0 THEN
-                  p1_rate * ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
-                  + p2_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
-                  + p3_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
-                WHEN method = 'バトル' THEN
-                  ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (encounter_pct / 100.0)
-                ELSE
-                  ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
-              END
-            )
-            / CASE WHEN method = '合体' THEN ? ELSE 1 END
-            * 100 + 100
-          ) AS cost
+          ${costExpr} AS cost
         FROM monsters
         ${whereSql}
         ORDER BY id ASC;
@@ -565,7 +578,7 @@
 
       const res = db.exec(sql, [fusionRolls, ...whereParams]);
       if (res.length === 0) {
-        document.getElementById("summary").textContent = "合計期待金額：0円（0体）";
+        document.getElementById("summary").textContent = summaryText;
         document.getElementById("output").innerHTML = "該当なし";
         return;
       }
@@ -599,7 +612,8 @@
       const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
 
       groups.forEach((rows, groupChap) => {
-        let chapTotal = 0;
+        let chapMarkedCount = 0;
+        let chapMarkedTotal = 0;
         let rowsHtml = "";
 
         rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, cost]) => {
@@ -611,8 +625,10 @@
           const star = marked ? "★" : "☆";
           const starColor = marked ? "#fbbf24" : "#64748b";
           const costNum = Number(cost);
-          total += costNum;
-          chapTotal += costNum;
+          if (marked) {
+            chapMarkedCount++;
+            chapMarkedTotal += costNum;
+          }
 
           const methodHtml = (canBattle && canFusion)
             ? `<select onchange="updateMethod(${id}, this.value)" style="padding: 1px 4px; font-size: 11px; margin: 0;">
@@ -658,7 +674,7 @@
           <div style="margin-top: 10px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #1e293b;">
             <button type="button" onclick="toggleChapter('${groupChap}')" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: #334155; color: #f8fafc; border: none; padding: 10px 12px; margin: 0; border-radius: 0; font-size: 15px; font-weight: bold; cursor: pointer; text-align: left;">
               <span>${isOpen ? "▼" : "▶"} ${groupChap}</span>
-              <span style="font-size: 13px; color: #fbbf24;">${rows.length}体 / ${chapTotal.toLocaleString()}円</span>
+              <span style="font-size: 13px; color: #fbbf24;"><span style="font-size: 13px; color: #fbbf24;">${rows.length}体${chapMarkedCount > 0 ? ` / ★${chapMarkedCount}体: ${chapMarkedTotal.toLocaleString()}円` : ""}</span>
             </button>
             ${isOpen ? `
               <table style="margin-top: 0;">
@@ -675,7 +691,7 @@
         `;
       });
 
-      document.getElementById("summary").textContent = `合計期待金額：${total.toLocaleString()}円（${count}体）`;
+      document.getElementById("summary").textContent = summaryText;
       document.getElementById("output").innerHTML = html;
     }
 
