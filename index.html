@@ -115,6 +115,11 @@
       <option value="合体">合体入手のみ</option>
       <option value="両方">両方できるのみ</option>
     </select>
+    <select id="bossFilter">
+      <option value="ALL">種別：すべて</option>
+      <option value="通常">通常モンスターのみ</option>
+      <option value="ボス">ボスのみ</option>
+    </select>
 
     <label style="font-size: 14px;">合体1プレイ抽選回数：</label>
     <input
@@ -174,7 +179,10 @@
           encounter_pct INTEGER DEFAULT 100,
           p1_rate REAL DEFAULT 0,
           p2_rate REAL DEFAULT 0,
-          p3_rate REAL DEFAULT 0
+          p3_rate REAL DEFAULT 0,
+          p3_rate REAL DEFAULT 0,
+          is_boss INTEGER DEFAULT 0
+        );
         );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
@@ -350,6 +358,18 @@
           UPDATE monsters SET can_battle = 1 WHERE method = 'バトル';
         UPDATE monsters SET can_fusion = 1 WHERE method = '合体';
         UPDATE monsters SET can_battle = 1, can_fusion = 1
+        UPDATE monsters SET is_boss = 1
+        WHERE name IN (
+          'ゼノゴン', '白の女王', '魔姫カーリィ', '魔王バスカー', '魔王ムウス', '邪神バスカー',
+          '魔王オロロソ', 'ひな鳥ルフ', 'イシス', '魔王アラキシュ',
+          '魔王ソジュ', '風隠の主ナナワライ', '水天のナギ',
+          '魔王ベルゼブブ', 'スカーレッド・ドラゴン', '魔皇エラドーラ',
+          '女神ノート', 'グランブルー・ドラゴン', '魔皇ミード',
+          '獄卒ゴズ', '獄卒メズ', '死霊使いワイト', '魔皇アウスレーゼ', '獄長牛頭馬頭',
+          'クリスタルドラゴン', '破壊神マハデーヴァ', '魔王リヴィエール', 'オーディン',
+          '魔王レオナーレ', '獄王閻魔', '大魔王バスカー', '大魔王ムウス',
+          '大魔王オロロソ', '大魔王アラキシュ', '大魔王ソジュ', '龍王ライシーヤ'
+        );
         WHERE name IN (
           'スライム・ドラゴン', 'スライム・シルバー', 'スライム・ゴールド', 'スライム・マナ',
           'スライム・アビス', 'スライム・フレア', 'スライム・アース', 'スライム・エアロ', 'アテナ'
@@ -584,6 +604,7 @@
     function render() {
       const chap = document.getElementById("chapter").value;
       const methodFilter = document.getElementById("methodFilter").value;
+      const bossFilter = document.getElementById("bossFilter").value;
       const keyword = document.getElementById("search").value.trim();
       const fusionRolls = Math.max(1, Number(document.getElementById("fusionRolls").value) || 1);
       const markedOnly = document.getElementById("markedOnly").checked;
@@ -601,6 +622,11 @@
         conditions.push("can_fusion = 1");
       } else if (methodFilter === "両方") {
         conditions.push("can_battle = 1 AND can_fusion = 1");
+      }
+      if (bossFilter === "通常") {
+        conditions.push("is_boss = 0");
+      } else if (bossFilter === "ボス") {
+        conditions.push("is_boss = 1");
       }
       
       if (keyword !== "") {
@@ -644,7 +670,7 @@
 
       const sql = `
         SELECT
-          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct, p1_rate, p2_rate, p3_rate,
+          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct, p1_rate, p2_rate, p3_rate,is_boss,
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
           ${costExpr} AS cost
         FROM monsters
@@ -680,7 +706,7 @@
         groups.get(c).push(row);
       });
 
-      const autoOpen = (chap !== "ALL" || keyword !== "" || markedOnly || methodFilter !== "ALL");
+      const autoOpen = (chap !== "ALL" || keyword !== "" || markedOnly || methodFilter !== "ALL" || bossFilter !== "ALL");
       let total = 0;
       const count = res[0].values.length;
       let html = "";
@@ -692,7 +718,7 @@
         let chapMarkedTotal = 0;
         let rowsHtml = "";
 
-        rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, cost]) => {
+        rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, costisBoss,]) => {
           const num = hp * at * sp * cmd;
           const den = 1296;
           const g = gcd(num, den);
@@ -716,7 +742,7 @@
           rowsHtml += `
             <tr>
               <td>
-                <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<br>
+                <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}${isBoss ? ' <small style="background:#dc2626;color:#fff;padding:1px 4px;border-radius:4px;font-size:10px;">BOSS</small>' : ''}<br>
                 <small style="color: #94a3b8;">
                   ${c} / ${methodHtml}
                 </small>
@@ -797,6 +823,7 @@
     document.getElementById("chapter").addEventListener("change", render);
     document.getElementById("search").addEventListener("input", render);
     document.getElementById("methodFilter").addEventListener("change", render);
+    document.getElementById("bossFilter").addEventListener("change", render);
     document.getElementById("fusionRolls").addEventListener("input", render);
     document.getElementById("markedOnly").addEventListener("change", render);
     function comb(n, r) {
