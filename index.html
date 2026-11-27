@@ -797,6 +797,7 @@
       const lvs = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-lv`).value) || 0);
       const totalStar = stars.reduce((a, b) => a + b, 0);
       const totalLv = lvs.reduce((a, b) => a + b, 0);
+      const allLv10 = lvs.every(lv => lv === 10);
 
       const mainBracket = totalStar <= 6 ? "3-6" : totalStar <= 9 ? "7-9" : "10-12";
       const brackets = [mainBracket];
@@ -852,28 +853,31 @@
           if (K === 0) { p1 = 0.05; p2 = 0; p3 = 0; }
 
           // 序章 ボス・レア条件
-          if (name === "魔王バスカー" && (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03")))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
+          if (name === "魔王バスカー") {
+            if (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03"))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
+            else if (mainBracket === "3-6") { const b = allLv10 ? 0.33 : 0.08; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
+          }
           if (name === "魔王ムウス" && K === 0) { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
-          if (name === "魔姫カーリィ" && mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+          if (name === "魔姫カーリィ" && mainBracket === "10-12") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           if (name === "ゼノゴン" && mainBracket === "3-6") { pct = 50; p1 = 0.50; p2 = 0; p3 = 0; }
 
           // 第1章 ボス条件
           if (name === "魔王オロロソ") {
             if (["波騎士トリト", "ギョギョ", "乙姫マヨリ"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
           // 第2章 ボス条件
           if (name === "ひな鳥ルフ" && names.includes("旅人アラン") && names.includes("旅人シャール")) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
           if (name === "魔王アラキシュ") {
             if (names[0] === "鍛冶師アンヴィル" || (names.includes("発見者アラン") && (names.includes("放浪のシャルル") || names.includes("精霊イブリス")))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
           // 第3章 ボス条件
           if (name === "魔王ソジュ") {
             if (["疾風のナギ", "魔公子イスル"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 20; p1 = 0.20; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.20 : 0.05; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
           if (name === "風隠の主ナナワライ") {
             if (["風隠の族長オロシ", "魔王ソジュ", "剣聖ヒエン"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
@@ -883,27 +887,27 @@
           // 第4章 ボス条件
           if (name === "魔王ベルゼブブ") {
             if (names[0] === "魔騎士マクス") { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 20; p1 = 0.20; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.20 : 0.05; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
           if (name === "魔皇エラドーラ") {
             if (names[0] === "狂魔アルルカン" || (names.includes("魔騎士マクス") && names.includes("救命士ラプラ"))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 20; p1 = 0.20; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.20 : 0.05; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
           // 第5章 ボス条件
           if (name === "魔皇ミード") {
             if (["鏡の精トゥルース", "ボーカリスト・ヴェッチ", "奈落の人魚セイレン"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
           // 第6章 ボス条件
           if (name === "獄卒ゴズ" || name === "獄卒メズ") {
             if (names.includes("夜の騎士エルメ") && names.includes("死神タナト")) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "7-9") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
+            else if (mainBracket === "7-9") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
           if (name === "魔皇アウスレーゼ") {
             if (["死神タナト", "スカルボーンドラゴン"].includes(names[0]) || (names.includes("夜の騎士エルメ") && names.includes("成聖正騎士ユーグ") && names.includes("大司教クリフ"))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
-            else if (mainBracket === "10-12") { pct = 20; p1 = 0.20; p2 = 0; p3 = 0; }
+            else if (mainBracket === "10-12") { const b = allLv10 ? 0.20 : 0.05; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
           }
 
           db.run(
@@ -914,7 +918,7 @@
       });
 
       document.getElementById("party-info").textContent =
-        `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}`;
+        `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}${allLv10 ? " 【全員Lv10：ボス確定枠あり】" : ""}`;
       render();
     };
 
