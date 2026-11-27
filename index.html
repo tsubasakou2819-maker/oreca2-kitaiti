@@ -897,6 +897,20 @@
         if (mRes.length === 0) return;
 
         mRes[0].values.forEach(([id, name]) => {
+          olemonForms
+          const olemonForms = {
+          "ゼノゴン": ["ゼノゴン", "ゼノドラン", "我竜ゼノドラゴン"],
+          "アケロン": ["アケロン", "アーケロン", "守護竜アーケロン"],
+          "イブリス": ["イブリス", "精霊イブリス", "導きの精霊イブリス"],
+          "シナプ": ["シナプ", "シナプス", "信獣シナプス"],
+          "エスティ": ["エスティ", "悪魔エスティ", "彩魔エストリエ"],
+          "トゥルース": ["トゥルース", "鏡の精トゥルース", "真実の精トゥルース"],
+          "死神見習いタナト": ["死神見習いタナト", "死神タナト", "不動の死神タナト"]
+        };
+
+        mRes[0].values.forEach(([id, name]) => {
+          const targetNames = olemonForms[name] || [name];
+          const namePh = targetNames.map(() => "?").join(",");
           const kRes = db.exec(
             `SELECT
                COALESCE(SUM(CASE WHEN cnt = 1 AND is_rare = 0 THEN 1 ELSE 0 END), 0),
@@ -907,15 +921,15 @@
                COALESCE(SUM(CASE WHEN cnt = 3 AND is_rare = 1 THEN 1 ELSE 0 END), 0)
              FROM (
                SELECT
-                 (CASE WHEN m1 = ? THEN 1 ELSE 0 END) +
-                 (CASE WHEN m2 = ? THEN 1 ELSE 0 END) +
-                 (CASE WHEN m3 = ? THEN 1 ELSE 0 END) AS cnt,
+                 (CASE WHEN m1 IN (${namePh}) THEN 1 ELSE 0 END) +
+                 (CASE WHEN m2 IN (${namePh}) THEN 1 ELSE 0 END) +
+                 (CASE WHEN m3 IN (${namePh}) THEN 1 ELSE 0 END) AS cnt,
                  CASE WHEN m2 IN ('ロック鳥ルフ', '不死鳥フェニックス') THEN 1 ELSE 0 END AS is_rare
                FROM enemy_teams
                WHERE chapter = ? AND bracket IN (${ph})
              )
              WHERE cnt > 0`,
-            [name, name, name, chap, ...brackets]
+            [...targetNames, ...targetNames, ...targetNames, chap, ...brackets]
           );
           const [k1, k2, k3, r1, r2, r3] = kRes[0].values[0];
           const K = k1 + k2 + k3;
