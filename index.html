@@ -109,6 +109,12 @@
 
   <script>
     let db;
+    const openChapters = new Set();
+    function toggleChapter(chap) {
+      if (openChapters.has(chap)) openChapters.delete(chap);
+      else openChapters.add(chap);
+      render();
+    }
 
     async function init() {
       const SQL = await initSqlJs({
@@ -578,68 +584,96 @@
         `;
       };
 
-      let total = 0;
-      const count = res[0].values.length;
-      let html = `
-        <table>
-          <tr>
-            <th>モンスター名</th>
-            <th>条件</th>
-            <th>確率</th>
-            <th>期待金額</th>
-          </tr>
-      `;
-
-      const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-     res[0].values.forEach(([id, name, chap, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, cost]) => {
-        const num = hp * at * sp * cmd;
-        const den = 1296;
-        const g = gcd(num, den);
-        const frac = `${num / g}/${den / g}`;
-        const badgeColor = method === "合体" ? "#34d399" : "#60a5fa";
-        const star = marked ? "★" : "☆";
-        const starColor = marked ? "#fbbf24" : "#64748b";
-        total += Number(cost);
-        const methodHtml = (canBattle && canFusion)
-          ? `<select onchange="updateMethod(${id}, this.value)" style="padding: 1px 4px; font-size: 11px; margin: 0;">
-               <option value="バトル" ${method === "バトル" ? "selected" : ""}>バトル</option>
-               <option value="合体" ${method === "合体" ? "selected" : ""}>合体</option>
-             </select> <small style="color:#fbbf24;">(両方可)</small>`
-          : `<span style="color: ${badgeColor};">${method}</span>`;
-
-        html += `
-          <tr>
-            <td>
-              <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<br>
-              <small style="color: #94a3b8;">
-                ${chap} / ${methodHtml}
-              </small>
-            </td>
-            <td>
-              <div style="display: grid; grid-template-columns: repeat(2, max-content); gap: 4px 8px;">
-                ${makeSelect(id, "HP", "hp", hp)}
-                ${makeSelect(id, "攻", "at", at)}
-                ${makeSelect(id, "速", "sp", sp)}
-                ${makeSelect(id, "コ", "cmd", cmd, true)}
-              </div>
-            </td>
-            <td>
-              ${frac}<br>
-              <small style="color: #94a3b8;">${pct}%</small>
-            </td>
-            <td>
-              ${Number(cost).toLocaleString()}円
-              ${method === "バトル" ? `<br><small style="color:#94a3b8;">出現率 ${encPct}%${
-                (p2Rate + p3Rate) > 0
-                  ? ` (1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
-                  : ""
-              }</small>` : ""}
-            </td>
-          </tr>
-        `;
+      const groups = new Map();
+      res[0].values.forEach(row => {
+        const c = row[2];
+        if (!groups.has(c)) groups.set(c, []);
+        groups.get(c).push(row);
       });
 
-      html += "</table>";
+      const autoOpen = (chap !== "ALL" || keyword !== "" || markedOnly || methodFilter !== "ALL");
+      let total = 0;
+      const count = res[0].values.length;
+      let html = "";
+
+      const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+
+      groups.forEach((rows, groupChap) => {
+        let chapTotal = 0;
+        let rowsHtml = "";
+
+        rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, cost]) => {
+          const num = hp * at * sp * cmd;
+          const den = 1296;
+          const g = gcd(num, den);
+          const frac = `${num / g}/${den / g}`;
+          const badgeColor = method === "合体" ? "#34d399" : "#60a5fa";
+          const star = marked ? "★" : "☆";
+          const starColor = marked ? "#fbbf24" : "#64748b";
+          const costNum = Number(cost);
+          total += costNum;
+          chapTotal += costNum;
+
+          const methodHtml = (canBattle && canFusion)
+            ? `<select onchange="updateMethod(${id}, this.value)" style="padding: 1px 4px; font-size: 11px; margin: 0;">
+                 <option value="バトル" ${method === "バトル" ? "selected" : ""}>バトル</option>
+                 <option value="合体" ${method === "合体" ? "selected" : ""}>合体</option>
+               </select> <small style="color:#fbbf24;">(両方可)</small>`
+            : `<span style="color: ${badgeColor};">${method}</span>`;
+
+          rowsHtml += `
+            <tr>
+              <td>
+                <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<br>
+                <small style="color: #94a3b8;">
+                  ${c} / ${methodHtml}
+                </small>
+              </td>
+              <td>
+                <div style="display: grid; grid-template-columns: repeat(2, max-content); gap: 4px 8px;">
+                  ${makeSelect(id, "HP", "hp", hp)}
+                  ${makeSelect(id, "攻", "at", at)}
+                  ${makeSelect(id, "速", "sp", sp)}
+                  ${makeSelect(id, "コ", "cmd", cmd, true)}
+                </div>
+              </td>
+              <td>
+                ${frac}<br>
+                <small style="color: #94a3b8;">${pct}%</small>
+              </td>
+              <td>
+                ${costNum.toLocaleString()}円
+                ${method === "バトル" ? `<br><small style="color:#94a3b8;">出現率 ${encPct}%${
+                  (p2Rate + p3Rate) > 0
+                    ? ` (1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
+                    : ""
+                }</small>` : ""}
+              </td>
+            </tr>
+          `;
+        });
+
+        const isOpen = autoOpen || openChapters.has(groupChap);
+        html += `
+          <div style="margin-top: 10px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #1e293b;">
+            <button type="button" onclick="toggleChapter('${groupChap}')" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: #334155; color: #f8fafc; border: none; padding: 10px 12px; margin: 0; border-radius: 0; font-size: 15px; font-weight: bold; cursor: pointer; text-align: left;">
+              <span>${isOpen ? "▼" : "▶"} ${groupChap}</span>
+              <span style="font-size: 13px; color: #fbbf24;">${rows.length}体 / ${chapTotal.toLocaleString()}円</span>
+            </button>
+            ${isOpen ? `
+              <table style="margin-top: 0;">
+                <tr>
+                  <th>モンスター名</th>
+                  <th>条件</th>
+                  <th>確率</th>
+                  <th>期待金額</th>
+                </tr>
+                ${rowsHtml}
+              </table>
+            ` : ""}
+          </div>
+        `;
+      });
 
       document.getElementById("summary").textContent = `合計期待金額：${total.toLocaleString()}円（${count}体）`;
       document.getElementById("output").innerHTML = html;
