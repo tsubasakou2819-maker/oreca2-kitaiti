@@ -76,10 +76,25 @@
       </select>
       <input id="party-filter-name" type="text" placeholder="文字で絞る..." style="width:130px; padding:4px; font-size:13px;">
     </div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; align-items:center;">
+      <span style="font-size:12px; color:#94a3b8;">アイテム絞込：</span>
+      <select id="item-filter-chap" style="padding:4px; font-size:13px;">
+        <option value="ALL">すべての章</option>
+        <option value="序章">序章</option>
+        <option value="第1章">第1章</option>
+        <option value="第2章">第2章</option>
+        <option value="第3章">第3章</option>
+        <option value="第4章">第4章</option>
+        <option value="第5章">第5章</option>
+        <option value="第6章">第6章</option>
+        <option value="外伝・コラボ">外伝・コラボ</option>
+      </select>
+      <input id="item-filter-name" type="text" placeholder="アイテム名で絞る..." style="width:150px; padding:4px; font-size:13px;">
+    </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;">
-     <div>1体目(リーダー): <select id="p1-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:36px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p1-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
-      <div>2体目: <select id="p2-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p2-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:36px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p2-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
-      <div>3体目: <select id="p3-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:36px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p3-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
+     <div>1体目(リーダー): <select id="p1-name" style="width:130px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:34px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p1-lv" style="width:46px;padding:4px;font-size:13px;"></select> 持<select id="p1-item" style="width:120px;padding:4px;font-size:13px;"><option value="">-- なし --</option></select></div>
+      <div>2体目: <select id="p2-name" style="width:130px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p2-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:34px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p2-lv" style="width:46px;padding:4px;font-size:13px;"></select> 持<select id="p2-item" style="width:120px;padding:4px;font-size:13px;"><option value="">-- なし --</option></select></div>
+      <div>3体目: <select id="p3-name" style="width:130px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:34px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p3-lv" style="width:46px;padding:4px;font-size:13px;"></select> 持<select id="p3-item" style="width:120px;padding:4px;font-size:13px;"><option value="">-- なし --</option></select></div>
     <datalist id="all-monsters-list"></datalist>
     </div>
     <div style="margin-top:8px;">
@@ -618,7 +633,45 @@
       document.getElementById("party-filter-chap").addEventListener("change", updatePartyMonsterOptions);
       document.getElementById("party-filter-star").addEventListener("change", updatePartyMonsterOptions);
       document.getElementById("party-filter-name").addEventListener("input", updatePartyMonsterOptions);
-      updatePartyMonsterOptions();
+      updatePartyMonsterOptions();const ITEMS_BY_CHAPTER = {
+        "序章": ["悪鬼の兜","異界の杖","炎情の言霊","火炎魔法魂","カニ鎌","蟹甲羅","霧雨の勲章","霧の水鏡","銀月の槍","銀鎖のネックレス","金のかけら","紅蓮の剣","グレン・ブレイド","ケモノの毛","古代の秘石","湖面の剣","邪神の魔樽","シャレたスカーフ","女王の口づけ","白いヒラヒラ","赤竜のツメ","ゼノカウル","ゼノソウル","ゼノハート","太古の基板","血濡れのモルト","怒弩","努怒弩","ドルフィンパドル","ドルフィンパドル改","二角獣のツノ","破壊神の敷物","バブルシステム","吹雪の結晶","ふわふわの毛","ホワイトワンド","魔界の樽","魔界ムース","魔夜中のマント","魔夜中の紋章","見習い騎士のマント","闇のグレーン","雪夜の結晶","夜のマント","竜の肝","レッドソウル","悪い夢"],
+        "第1章": ["アーケンショール","アーケンソウル","アルテミスの弓","怒りの錨","海鳴りの槍","黄金の粉","黄金竜のウロコ","黄金竜のヒゲ","海翁のコート","金砕棒","ガントレット","銀竜のウロコ","銀竜のヒゲ","極特服","潮乾珠","潮盈珠","邪神ゴブレット","熟成オロロ蘇","ずきんずきん","スフクの羽根","青竜のツメ","ソラクジラの大ヒゲ","ソラクジラのヒゲ","ソラクジラのヒレ","特攻服","ナイルの宝石","波乗りの槍","白銀の粉","花弁の結晶","花房の結晶","波浪のびく","ひび割れた形見","ブルーソウル","ぽわんぽわん","魔貝","蓑","魅惑のコイン","燃ゆる水","竜宮ゴブレット","りゅうぜん香","竜のヒゲ","海神の釣針","ワニロール"],
+        "第2章": ["暗黒曜石","暗黒竜のツメ","イエローソウル","イシスの石椅子","炎魂","炎迅オイル","渇きのリング","乾渇の果実","サークル","彩雲の結晶","砂漠のお守り","砂縛の甕","邪神の妖甕","ステゴゲノム","青雲の結晶","千刃のベルト","トリケラゲノム","ネジ","ハート","破壊の刃車","古びた銃","無頼気オイル","導きのエレメント","無幻戦士の銃","無幻の誓い","冥界神の石版","冥界の天秤","猛火の槌","ルフソウル","ルフの鶏冠"],
+        "第3章": ["蒼い実","朱い実","緋月の真露","岩融の柄","風しずくの種","風凪のマント","勧進帳","草薙剣","グリーンソウル","クレセント・シロップ","クレセント・ドロップ","真竜の証","そよ風のマフラー","鳥竜のツメ","つややかな毛玉","天狗砥石","トモダチの証","ドラゴニックソウル","涙竜の帷","虹色の羽根","ニューロシグナル","玻璃の涙","半月の結晶","秘剣七笑","秘剣雷切","風隠伏流水","ふしぎな笹葉","ふしぎな羽衣","満月の結晶","水凪のマント","夢獣のしっぽ","女神の羽衣","夜陰の鏡月","宵の鏡月","若月の真露"],
+        "第4章": ["エルフのフード","救命薬","狂気のマント","強壮剤","禁忌のフード","禁断の仮面","クラウン","クリムゾン霊気","黒い衝動","小悪魔サテン","抗熱瘴薬","豪魔の炎","蠱惑のサテン","邪悪なシルク","邪帝トゲトゲ","スカーレッドソウル","絶命薬","大竜角","道化のカード","友との戦跡","噴炎の蹄鉄","暴食のマント","ほのおのかたまり","魔界アガベ","マキシマクスカリバー","マクスカリバー","魔公爵のマント","魔性のレザー","魔智針","魔導の指輪","妖精のお守り","妖精の笛","邪な本能","竜角","レッドスピリット","レッドホットスーツ"],
+        "第5章": ["アイシングロゼット","暗礁のハープ","オオカミギター","極光反射壁","懐中時計","鏡のかけら","ガブリエルの羽根","神々の翼","ギャラルホルン","こおりのかたまり","ゴッドサークル","グランブルーソウル","古代石","霜のたてがみ","真実の手鏡","白ひげ","聖天使の輪","大天輪","タコツ帽","ナダレダレ","虹色の眼","人魚の氷宝","ビフレスト","百歌蜜","氷解のマイク","氷花のマイク","ファミリア・バス","ブルースピリット","魔皇の氷冠","魔海のハープ","魔唱のマイク","魔唱の魔晶","魔導器","ミョルニル","ミラードーム","ミゾレ","ミラーボール","もくず","雪男の足跡","ラファエルの羽根","連解蜜"],
+        "第6章": ["青き希望のダイヤ","アテナの鏡","イージスの盾","命のダイヤ","黄金の骨","黄金の骨のかけら","貴腐人のスカーフ","貴腐人のショール","クラウ・ソラス","鉄の心臓","ゲヘナの鍵","五彩棒","コワイトハウス","死神の鎌","死の鎌","呪液","寿冥のろうそく","叙聖の書","神品の書","頭骨のランタン","聖騎士の書","僧侶の書","ダークソウル","大饗筋サポーター","大競筋サポーター","ダイヤのかけら","地命石","デスサイズ","デスサイズヘルフラグ","デストルドー","ドラゴンパール","二.五彩棒","墓堀刃","光のダイヤ","灯の魂","不死鳥の飾り羽","ヘルフラグ","ホワイトクリスタル","ホワイトパール","魔王の石","魔界の樹液","冥途のろうそく","冥府の鍵","女神の聖油","亡者の毛束","ラダマンティウム","竜の骨"],
+        "外伝・コラボ": ["アツアツトリフ","鏡蓮華の指輪","風の竜血盃","風の竜盃","乾渇の枯露果実","ギリギリトリフ","銀の亜鈴","クリスタルソウル","グングニル","三叉戟","真・天竜の快槍","真・天竜の月杖","真・天竜の巧刃","真・天竜の聖剣","真・天竜の俊刃","真・天竜の法環","真・天竜の宝刀","真・天竜の怜剣","地の竜甕","超熟オロロ蘇","地の竜血甕","天竜の快槍","天竜の月杖","天竜の巧刃","天竜の聖剣","天竜の俊刃","天竜の法環","天竜の宝刀","天竜の怜剣","天竜鱗","ビーチサンドバッグ","フリーレンの杖","炎の竜血樽","炎の竜樽","魔王のオーブ","魔界エイジング樽","魔界プレミアムース","水の竜血杯","水の竜杯","ヤギ肉くん","ヤットコのカタワレ","夜夜中の霞月","竜血晶","龍絶蘭"]
+      };
+      const allPartyItems = Object.entries(ITEMS_BY_CHAPTER).flatMap(([chap, list]) =>
+        list.map(name => ({ name, chapter: chap }))
+      );
+
+      function updatePartyItemOptions() {
+        const chapF = document.getElementById("item-filter-chap").value;
+        const nameF = document.getElementById("item-filter-name").value.trim().toLowerCase();
+        const filtered = allPartyItems.filter(it =>
+          (chapF === "ALL" || it.chapter === chapF) &&
+          (nameF === "" || it.name.toLowerCase().includes(nameF))
+        );
+
+        ['p1', 'p2', 'p3'].forEach(prefix => {
+          const itemEl = document.getElementById(prefix + '-item');
+          const current = itemEl.value;
+          let opts = `<option value="">-- なし (${filtered.length}件) --</option>`;
+          if (current && !filtered.some(it => it.name === current)) {
+            opts += `<option value="${current}" selected>${current}</option>`;
+          }
+          opts += filtered
+            .map(it => `<option value="${it.name}" ${it.name === current ? "selected" : ""}>${it.name}</option>`)
+            .join("");
+          itemEl.innerHTML = opts;
+        });
+      }
+
+      document.getElementById("item-filter-chap").addEventListener("change", updatePartyItemOptions);
+      document.getElementById("item-filter-name").addEventListener("input", updatePartyItemOptions);
+      updatePartyItemOptions();
 
       applyParty();
     }
