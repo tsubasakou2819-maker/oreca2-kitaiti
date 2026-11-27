@@ -959,8 +959,48 @@
           }
           if (name === "魔王ムウス" && K === 0) { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
           if (name === "魔姫カーリィ" && mainBracket === "10-12") { const b = allLv10 ? 0.25 : 0.06; pct = Math.round(b * 100); p1 = b; p2 = 0; p3 = 0; }
-          if (name === "ゼノゴン" && mainBracket === "3-6") { pct = 50; p1 = 0.50; p2 = 0; p3 = 0; }
+          const mergeBoss = (bossB) => {
+            if (bossB >= 1) {
+              if (K + R === 0) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
+              else { p3 = p2 + p3; p2 = p1; p1 = Math.max(0, 1 - pAny); pAny = 1; pct = 100; }
+            } else if (bossB > 0) {
+              const prevAny = (K + R === 0) ? 0 : pAny;
+              if (K + R === 0) { p1 = 0; p2 = 0; p3 = 0; }
+              pAny = 1 - (1 - prevAny) * (1 - bossB);
+              p3 = p3 + p2 * bossB;
+              p2 = p2 * (1 - bossB) + p1 * bossB;
+              p1 = p1 * (1 - bossB) + (1 - prevAny) * bossB;
+              pct = Math.round(pAny * 100);
+            }
+          };
 
+          if (name === "ゼノゴン") {
+            if (mainBracket === "3-6") mergeBoss(0.50);
+            else if (mainBracket === "10-12") mergeBoss(allLv10 ? 0.25 : 0.06);
+          }
+          if (name === "アケロン") {
+            if (names[0] === "波騎士トリト") mergeBoss(1);
+            else if (mainBracket === "7-9") mergeBoss(allLv10 ? 0.33 : 0.08);
+          }
+          if (name === "イブリス") {
+            if (["旅人アラン", "発見者アラン"].includes(names[0])) mergeBoss(1);
+          }
+          if (name === "シナプ") {
+            if (names[0] === "風のナギ") mergeBoss(1);
+            else mergeBoss(0.33);
+          }
+          if (name === "エスティ") {
+            if (names[0] === "豪魔騎士マクス" || (names.includes("悪魔マクス") && names.includes("衛生兵ラプラ"))) mergeBoss(1);
+            else if (mainBracket === "3-6") mergeBoss(allLv10 ? 0.50 : 0.13);
+          }
+          if (name === "トゥルース") {
+            if (["ボーカリスト・ヴェッチ", "魔皇ミード", "アーティスト・ヴェッチ"].includes(names[0])) mergeBoss(1);
+            else mergeBoss(0.20);
+          }
+          if (name === "死神見習いタナト") {
+            if (["夜の騎士エルメ", "魔皇アウスレーゼ", "獄長牛頭馬頭"].includes(names[0])) mergeBoss(1);
+            else mergeBoss(0.33);
+          }
           // 第1章 ボス条件
           if (name === "魔王オロロソ") {
             if (["波騎士トリト", "ギョギョ", "乙姫マヨリ"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
