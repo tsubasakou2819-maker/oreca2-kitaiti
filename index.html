@@ -895,9 +895,7 @@
 
         const mRes = db.exec("SELECT id, name FROM monsters WHERE chapter = ? AND can_battle = 1", [chap]);
         if (mRes.length === 0) return;
-
-        mRes[0].values.forEach(([id, name]) => {
-          olemonForms
+        
           const olemonForms = {
           "ゼノゴン": ["ゼノゴン", "ゼノドラン", "我竜ゼノドラゴン"],
           "アケロン": ["アケロン", "アーケロン", "守護竜アーケロン"],
