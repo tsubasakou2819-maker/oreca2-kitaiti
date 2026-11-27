@@ -48,7 +48,12 @@
 <body>
   <h2>オレカバトル2 SQL厳選計算</h2>
   <div style="background:#1e293b; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #334155;">
-    <div style="font-weight:bold; margin-bottom:6px; color:#38bdf8;">自チーム入力（序章〜第6章の出現率を自動計算）</div>
+    <button type="button" onclick="togglePartyBox()" style="width:100%; display:flex; justify-content:space-between; align-items:center; background:none; border:none; padding:0; margin:0; color:#38bdf8; font-weight:bold; font-size:15px; cursor:pointer; text-align:left;">
+      <span id="party-toggle-title">▶ 自チーム入力（序章〜第6章の出現率を自動計算）</span>
+      <span style="font-size:12px; color:#94a3b8;">タップで開閉</span>
+    </button>
+    <div id="party-info" style="font-size:13px; color:#cbd5e1; margin-top:4px;">クラス合計: 0 / 合計Lv: 15</div>
+    <div id="party-body" style="display:none; margin-top:8px;">
     <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; align-items:center;">
       <span style="font-size:12px; color:#94a3b8;">候補絞込：</span>
       <select id="party-filter-chap" style="padding:4px; font-size:13px;">
@@ -77,9 +82,9 @@
       <div>3体目: <select id="p3-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="" placeholder="-" readonly tabindex="-1" style="width:36px;padding:4px;font-size:13px;pointer-events:none;background:#334155;color:#f8fafc;border:1px solid #475569;text-align:center;"> Lv<select id="p3-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
     <datalist id="all-monsters-list"></datalist>
     </div>
-    <div style="margin-top:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+    <div style="margin-top:8px;">
       <button type="button" onclick="applyParty()" style="background:#0284c7; color:white; border:none; padding:6px 12px; font-size:14px; cursor:pointer;">このチームで出現率を計算</button>
-      <span id="party-info" style="font-size:13px; color:#cbd5e1;">クラス合計: 0 / 合計Lv: 15</span>
+    </div>
     </div>
   </div>
 
@@ -133,6 +138,13 @@
   <script>
     let db;
     const openChapters = new Set();
+    function togglePartyBox() {
+      const body = document.getElementById("party-body");
+      const title = document.getElementById("party-toggle-title");
+      const isHidden = body.style.display === "none";
+      body.style.display = isHidden ? "block" : "none";
+      title.textContent = (isHidden ? "▼" : "▶") + " 自チーム入力（序章〜第6章の出現率を自動計算）";
+    }
     function toggleChapter(chap) {
       if (openChapters.has(chap)) openChapters.delete(chap);
       else openChapters.add(chap);
