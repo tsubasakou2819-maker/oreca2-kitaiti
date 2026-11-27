@@ -182,7 +182,6 @@
           p3_rate REAL DEFAULT 0,
           is_boss INTEGER DEFAULT 0
         );
-        );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
           (2, 'ジバクガエル', '序章', 'バトル', 1, 1, 1, 1),
@@ -355,8 +354,13 @@
           (169, '商人アリ', '外伝・コラボ', 'バトル', 1, 1, 1, 1),
           (170, 'フリーレン', '外伝・コラボ', 'バトル', 1, 1, 1, 1);
           UPDATE monsters SET can_battle = 1 WHERE method = 'バトル';
+        UPDATE monsters SET can_battle = 1 WHERE method = 'バトル';
         UPDATE monsters SET can_fusion = 1 WHERE method = '合体';
         UPDATE monsters SET can_battle = 1, can_fusion = 1
+        WHERE name IN (
+          'スライム・ドラゴン', 'スライム・シルバー', 'スライム・ゴールド', 'スライム・マナ',
+          'スライム・アビス', 'スライム・フレア', 'スライム・アース', 'スライム・エアロ', 'アテナ'
+        );
         UPDATE monsters SET is_boss = 1
         WHERE name IN (
           'ゼノゴン', '白の女王', '魔姫カーリィ', '魔王バスカー', '魔王ムウス', '邪神バスカー',
