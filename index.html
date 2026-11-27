@@ -799,57 +799,7 @@
       render();
     };
 
-      const mRes = db.exec("SELECT id, name FROM monsters WHERE chapter = '序章' AND can_battle = 1");
-      mRes[0].values.forEach(([id, name]) => {
-        const kRes = db.exec(
-          `SELECT
-             COALESCE(SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END), 0),
-             COALESCE(SUM(CASE WHEN cnt = 2 THEN 1 ELSE 0 END), 0),
-             COALESCE(SUM(CASE WHEN cnt = 3 THEN 1 ELSE 0 END), 0)
-           FROM (
-             SELECT
-               (CASE WHEN m1 = ? THEN 1 ELSE 0 END) +
-               (CASE WHEN m2 = ? THEN 1 ELSE 0 END) +
-               (CASE WHEN m3 = ? THEN 1 ELSE 0 END) AS cnt
-             FROM enemy_teams
-             WHERE chapter = '序章' AND bracket IN (${ph})
-           )
-           WHERE cnt > 0`,
-          [name, name, name, ...brackets]
-        );
-        const [k1, k2, k3] = kRes[0].values[0];
-        const K = k1 + k2 + k3;
-
-        let p3 = pickProb(T, k3);
-        let p2or3 = pickProb(T, k2 + k3);
-        let pAny = pickProb(T, K);
-        let p2 = Math.max(0, p2or3 - p3);
-        let p1 = Math.max(0, pAny - p2or3);
-        let pct = K === 0 ? 5 : Math.round(pAny * 100);
-
-        if (K === 0) {
-          p1 = 0.05; p2 = 0; p3 = 0;
-        }
-        if (name === "魔王バスカー" && (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03")))) {
-          pct = 100; p1 = 1; p2 = 0; p3 = 0;
-        }
-        if (name === "邪神バスカー" && (names[0] === "紅蓮の騎士スタン" || names.includes("魔王ムウス") && names[0] === "魔王ムウス")) {
-          pct = 100; p1 = 1; p2 = 0; p3 = 0;
-        }
-        if (name === "魔王ムウス" && K === 0) { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
-        if (name === "魔姫カーリィ" && mainBracket === "10-12") { pct = 25; p1 = 0.25; p2 = 0; p3 = 0; }
-        if (name === "ゼノゴン" && mainBracket === "3-6") { pct = 50; p1 = 0.50; p2 = 0; p3 = 0; }
-
-        db.run(
-          "UPDATE monsters SET encounter_pct = ?, p1_rate = ?, p2_rate = ?, p3_rate = ? WHERE id = ?",
-          [Math.max(1, pct), p1, p2, p3, id]
-        );
-      });
-
-      document.getElementById("party-info").textContent =
-        `クラス合計: ${totalStar} (${mainBracket}) / 合計Lv: ${totalLv} / 対象帯: ${brackets.join("・")}`;
-      render();
-    }
+      
     [1, 2, 3].forEach(i => {
       const nameInput = document.getElementById(`p${i}-name`);
       const starInput = document.getElementById(`p${i}-star`);
