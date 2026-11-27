@@ -71,14 +71,14 @@
       <input id="party-filter-name" type="text" placeholder="文字で絞る..." style="width:130px; padding:4px; font-size:13px;">
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;">
-      <div>1体目(リーダー): <select id="p1-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p1-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
-      <div>2体目: <select id="p2-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p2-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p2-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
-      <div>3体目: <select id="p3-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="2" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p3-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
+     <div>1体目(リーダー): <select id="p1-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p1-star" type="number" min="1" max="4" value="" placeholder="-" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p1-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
+      <div>2体目: <select id="p2-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p2-star" type="number" min="1" max="4" value="" placeholder="-" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p2-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
+      <div>3体目: <select id="p3-name" style="width:140px;padding:4px;font-size:13px;"><option value="">-- 選択 --</option></select> ★<input id="p3-star" type="number" min="1" max="4" value="" placeholder="-" style="width:40px;padding:4px;font-size:13px;"> Lv<select id="p3-lv" style="width:48px;padding:4px;font-size:13px;"></select></div>
     <datalist id="all-monsters-list"></datalist>
     </div>
     <div style="margin-top:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
       <button type="button" onclick="applyParty()" style="background:#0284c7; color:white; border:none; padding:6px 12px; font-size:14px; cursor:pointer;">このチームで出現率を計算</button>
-      <span id="party-info" style="font-size:13px; color:#cbd5e1;">クラス合計: 6 / 合計Lv: 15</span>
+      <span id="party-info" style="font-size:13px; color:#cbd5e1;">クラス合計: 0 / 合計Lv: 15</span>
     </div>
   </div>
 
@@ -547,9 +547,8 @@
         const lvEl = document.getElementById(prefix + '-lv');
         lvEl.innerHTML = lvOptionsHtml;
         nameEl.addEventListener('change', () => {
-          if (window.ALL_MONSTER_STARS[nameEl.value]) {
-            starEl.value = window.ALL_MONSTER_STARS[nameEl.value];
-          }
+         starEl.value = window.ALL_MONSTER_STARS[nameEl.value] || "";
+          starEl.dispatchEvent(new Event("input"));
         });
       });
 
