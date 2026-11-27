@@ -717,7 +717,7 @@
         let chapMarkedTotal = 0;
         let rowsHtml = "";
 
-        rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, pct, costisBoss,]) => {
+       rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, isBoss, pct, cost]) => {
           const num = hp * at * sp * cmd;
           const den = 1296;
           const g = gcd(num, den);
@@ -741,7 +741,7 @@
           rowsHtml += `
             <tr>
               <td>
-                <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}<button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}${isBoss ? ' <small style="background:#dc2626;color:#fff;padding:1px 4px;border-radius:4px;font-size:10px;">BOSS</small>' : ''}<br>
+                <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}${isBoss ? ' <small style="background:#dc2626;color:#fff;padding:1px 4px;border-radius:4px;font-size:10px;">BOSS</small>' : ''}<br>
                 <small style="color: #94a3b8;">
                   ${c} / ${methodHtml}
                 </small>
@@ -775,7 +775,7 @@
           <div style="margin-top: 10px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #1e293b;">
             <button type="button" onclick="toggleChapter('${groupChap}')" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: #334155; color: #f8fafc; border: none; padding: 10px 12px; margin: 0; border-radius: 0; font-size: 15px; font-weight: bold; cursor: pointer; text-align: left;">
               <span>${isOpen ? "▼" : "▶"} ${groupChap}</span>
-              <span style="font-size: 13px; color: #fbbf24;"><span style="font-size: 13px; color: #fbbf24;">${rows.length}体${chapMarkedCount > 0 ? ` / ★${chapMarkedCount}体: ${chapMarkedTotal.toLocaleString()}円` : ""}</span>
+              <span style="font-size: 13px; color: #fbbf24;">${rows.length}体${chapMarkedCount > 0 ? ` / ★${chapMarkedCount}体: ${chapMarkedTotal.toLocaleString()}円` : ""}</span>
             </button>
             ${isOpen ? `
               <div style="overflow-x: auto;">
