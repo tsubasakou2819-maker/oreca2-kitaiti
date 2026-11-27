@@ -26,9 +26,10 @@
     }
     th, td {
       border: 1px solid #334155;
-      padding: 8px;
+      padding: 6px 4px;
       text-align: left;
-      font-size: 14px;
+      font-size: 12px;
+      word-break: break-word;
     }
     th {
       background: #334155;
@@ -723,10 +724,10 @@
               <td>
                 ${costNum.toLocaleString()}円
                 ${method === "バトル" ? `<br><small style="color:#94a3b8;">出現率 ${encPct}%${
-                  (p2Rate + p3Rate) > 0
-                    ? ` (1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
-                    : ""
-                }</small>` : ""}
+                (p2Rate + p3Rate) > 0
+                  ? `<br>(1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
+                  : ""
+              }</small>` : ""}
               </td>
             </tr>
           `;
@@ -740,15 +741,17 @@
               <span style="font-size: 13px; color: #fbbf24;"><span style="font-size: 13px; color: #fbbf24;">${rows.length}体${chapMarkedCount > 0 ? ` / ★${chapMarkedCount}体: ${chapMarkedTotal.toLocaleString()}円` : ""}</span>
             </button>
             ${isOpen ? `
-              <table style="margin-top: 0;">
-                <tr>
-                  <th>モンスター名</th>
-                  <th>条件</th>
-                  <th>確率</th>
-                  <th>期待金額</th>
-                </tr>
-                ${rowsHtml}
-              </table>
+              <div style="overflow-x: auto;">
+                <table style="margin-top: 0;">
+                  <tr>
+                    <th>モンスター名</th>
+                    <th>条件</th>
+                    <th>確率</th>
+                    <th>期待金額</th>
+                  </tr>
+                  ${rowsHtml}
+                </table>
+              </div>
             ` : ""}
           </div>
         `;
