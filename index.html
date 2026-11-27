@@ -861,31 +861,47 @@
         mRes[0].values.forEach(([id, name]) => {
           const kRes = db.exec(
             `SELECT
-               COALESCE(SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END), 0),
-               COALESCE(SUM(CASE WHEN cnt = 2 THEN 1 ELSE 0 END), 0),
-               COALESCE(SUM(CASE WHEN cnt = 3 THEN 1 ELSE 0 END), 0)
+               COALESCE(SUM(CASE WHEN cnt = 1 AND is_rare = 0 THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN cnt = 2 AND is_rare = 0 THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN cnt = 3 AND is_rare = 0 THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN cnt = 1 AND is_rare = 1 THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN cnt = 2 AND is_rare = 1 THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN cnt = 3 AND is_rare = 1 THEN 1 ELSE 0 END), 0)
              FROM (
                SELECT
                  (CASE WHEN m1 = ? THEN 1 ELSE 0 END) +
                  (CASE WHEN m2 = ? THEN 1 ELSE 0 END) +
-                 (CASE WHEN m3 = ? THEN 1 ELSE 0 END) AS cnt
+                 (CASE WHEN m3 = ? THEN 1 ELSE 0 END) AS cnt,
+                 CASE WHEN m2 IN ('ロック鳥ルフ', '不死鳥フェニックス') THEN 1 ELSE 0 END AS is_rare
                FROM enemy_teams
                WHERE chapter = ? AND bracket IN (${ph})
              )
              WHERE cnt > 0`,
             [name, name, name, chap, ...brackets]
           );
-          const [k1, k2, k3] = kRes[0].values[0];
+          const [k1, k2, k3, r1, r2, r3] = kRes[0].values[0];
           const K = k1 + k2 + k3;
+          const R = r1 + r2 + r3;
 
-          let p3 = pickProb(T, k3);
-          let p2or3 = pickProb(T, k2 + k3);
-          let pAny = pickProb(T, K);
-          let p2 = Math.max(0, p2or3 - p3);
-          let p1 = Math.max(0, pAny - p2or3);
-          let pct = K === 0 ? 5 : Math.round(pAny * 100);
-          if (K === 0) { p1 = 0.05; p2 = 0; p3 = 0; }
+          const calcProbs = (n1, n2, n3) => {
+            const nAll = n1 + n2 + n3;
+            const q3 = pickProb(T, n3);
+            const q2or3 = pickProb(T, n2 + n3);
+            const qAny = pickProb(T, nAll);
+            return [Math.max(0, qAny - q2or3), Math.max(0, q2or3 - q3), q3, qAny];
+          };
 
+          let [p1, p2, p3, pAny] = calcProbs(k1, k2, k3);
+          if (R > 0) {
+            const rareWeight = 0.2;
+            const [rp1, rp2, rp3, rpAny] = calcProbs(k1 + r1, k2 + r2, k3 + r3);
+            p1 = p1 * (1 - rareWeight) + rp1 * rareWeight;
+            p2 = p2 * (1 - rareWeight) + rp2 * rareWeight;
+            p3 = p3 * (1 - rareWeight) + rp3 * rareWeight;
+            pAny = pAny * (1 - rareWeight) + rpAny * rareWeight;
+          }
+          let pct = (K + R) === 0 ? 5 : Math.round(pAny * 100);
+          if (K + R === 0) { p1 = 0.05; p2 = 0; p3 = 0; }
           // 序章 ボス・レア条件
           if (name === "魔王バスカー") {
             if (names[0] === "赤騎士スタン" || (names.includes("赤騎士スタン") && names.includes("魔導師マナナール") && names.includes("ボット03"))) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
@@ -946,9 +962,9 @@
 
           // お助け枠で味方に来る場合は1体確定＋敵出現分を上乗せ
           if (assistMonsters.includes(name)) {
-            const enemy0 = K === 0 ? 1 : Math.max(0, 1 - pAny);
-            const enemy1 = K === 0 ? 0 : p1;
-            const enemy2plus = K === 0 ? 0 : (p2 + p3);
+            const enemy0 = (K + R) === 0 ? 1 : Math.max(0, 1 - pAny);
+            const enemy1 = (K + R) === 0 ? 0 : p1;
+            const enemy2plus = (K + R) === 0 ? 0 : (p2 + p3);
             p1 = enemy0;
             p2 = enemy1;
             p3 = enemy2plus;
