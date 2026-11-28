@@ -2285,6 +2285,20 @@ const FUSION_RECIPES = {
             if (["夜の騎士エルメ", "魔皇アウスレーゼ", "獄長牛頭馬頭"].includes(names[0])) mergeBoss(1);
             else mergeBoss(0.33);
           }
+          // 第6章 (BOSS)死霊使いワイトのお供としてアルラ×2が出現（仲間になる）
+          if (name === "アルラ") {
+            if (names[0] === "夜の騎士エルメ") {
+              pct = 100; p1 = 0; p2 = 1; p3 = 0;
+            } else if (mainBracket === "3-6") {
+              const bossWight = allLv10 ? 0.33 : 0.08;
+              const prevAny = (K + R === 0) ? 0 : pAny;
+              pAny = 1 - (1 - prevAny) * (1 - bossWight);
+              p2 = p2 * (1 - bossWight) + bossWight;
+              p1 = p1 * (1 - bossWight);
+              p3 = p3 * (1 - bossWight);
+              pct = Math.round(pAny * 100);
+            }
+          }
           // 第1章 ボス条件
           if (name === "魔王オロロソ") {
             if (["波騎士トリト", "ギョギョ", "乙姫マヨリ"].includes(names[0])) { pct = 100; p1 = 1; p2 = 0; p3 = 0; }
