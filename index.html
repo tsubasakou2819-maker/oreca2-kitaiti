@@ -2012,7 +2012,7 @@ const FUSION_RECIPES = {
           // 1. イラストチェンジ
           if (changeItems.length > 0) {
             for (const s of slots) {
-              if (s.name === monsterName && !s.changed && (isBoss || s.lv >= 10)) {
+              if (s.name === monsterName && !s.changed && s.lv >= 10) {
                 for (const it of items) {
                   if (changeItems.includes(it)) total += 1;
                 }
@@ -2083,7 +2083,7 @@ const FUSION_RECIPES = {
           // 遷移B: イラストチェンジ（BOSS または Lv9以上 ＋ 専用アイテム）
           for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
-            if (s.changed || !(bossNameSet.has(s.name) || s.lv >= 10)) continue;
+            if (s.changed || s.lv < 10) continue;
             const cItems = ILLUST_CHANGE_ITEMS[s.name];
             if (!cItems) continue;
             for (const req of cItems) {
