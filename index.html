@@ -2050,7 +2050,7 @@ const FUSION_RECIPES = {
           const key = makeKey(slots, items, enemies);
           if (memo.has(key)) return memo.get(key);
           const curPeeks = countPeeks(slots, items, enemies);
-          if (++steps > 350) return curPeeks;
+          if (++steps > 5000) return curPeeks;
 
           let bestNext = 0;
           const tryNext = (nSlots, nItems, nEnemies) => {
