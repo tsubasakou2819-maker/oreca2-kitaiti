@@ -2380,8 +2380,9 @@ const FUSION_RECIPES = {
             else mergeBoss(0.33);
           }
           // 第6章 (BOSS)死霊使いワイトのお供としてアルラ×2が出現（仲間になる）
+          // 第6章 (BOSS)死霊使いワイトのお供としてアルラ×2が出現（リーダーが夜の騎士エルメ or Lv10かつ★3-6なら確定）
           if (name === "アルラ") {
-            if (names[0] === "夜の騎士エルメ") {
+            if (names[0] === "夜の騎士エルメ" || (lvs[0] === 10 && mainBracket === "3-6")) {
               pct = 100; p1 = 0; p2 = 1; p3 = 0;
             } else if (mainBracket === "3-6") {
               const bossWight = allLv10 ? 0.33 : 0.08;
