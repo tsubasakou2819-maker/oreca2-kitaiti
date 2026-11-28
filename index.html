@@ -447,7 +447,8 @@
           p1_rate REAL DEFAULT 0,
           p2_rate REAL DEFAULT 0,
           p3_rate REAL DEFAULT 0,
-          is_boss INTEGER DEFAULT 0
+          is_boss INTEGER DEFAULT 0,
+          fusion_rolls REAL DEFAULT 0
         );
         INSERT INTO monsters (id, name, chapter, method, hp, at, sp, cmd) VALUES
           (1, 'トロル', '序章', 'バトル', 1, 1, 1, 1),
@@ -895,6 +896,8 @@
         "第6章": ["青き希望のダイヤ","アテナの鏡","イージスの盾","命のダイヤ","黄金の骨","黄金の骨のかけら","貴腐人のスカーフ","貴腐人のショール","クラウ・ソラス","鉄の心臓","ゲヘナの鍵","五彩棒","コワイトハウス","死神の鎌","死の鎌","呪液","寿冥のろうそく","叙聖の書","神品の書","頭骨のランタン","聖騎士の書","僧侶の書","ダークソウル","大饗筋サポーター","大競筋サポーター","ダイヤのかけら","地命石","デスサイズ","デスサイズヘルフラグ","デストルドー","ドラゴンパール","二.五彩棒","墓堀刃","光のダイヤ","灯の魂","不死鳥の飾り羽","ヘルフラグ","ホワイトクリスタル","ホワイトパール","魔王の石","魔界の樹液","冥途のろうそく","冥府の鍵","女神の聖油","亡者の毛束","ラダマンティウム","竜の骨"],
         "外伝・コラボ": ["アツアツトリフ","鏡蓮華の指輪","風の竜血盃","風の竜盃","乾渇の枯露果実","ギリギリトリフ","銀の亜鈴","クリスタルソウル","グングニル","三叉戟","真・天竜の快槍","真・天竜の月杖","真・天竜の巧刃","真・天竜の聖剣","真・天竜の俊刃","真・天竜の法環","真・天竜の宝刀","真・天竜の怜剣","地の竜甕","超熟オロロ蘇","地の竜血甕","天竜の快槍","天竜の月杖","天竜の巧刃","天竜の聖剣","天竜の俊刃","天竜の法環","天竜の宝刀","天竜の怜剣","天竜鱗","ビーチサンドバッグ","フリーレンの杖","炎の竜血樽","炎の竜樽","魔王のオーブ","魔界エイジング樽","魔界プレミアムース","水の竜血杯","水の竜杯","ヤギ肉くん","ヤットコのカタワレ","夜夜中の霞月","竜血晶","龍絶蘭"]
       };
+      // ① アイテム同士の合体（左2つを消費して右の1つができる）
+
       const allPartyItems = Object.entries(ITEMS_BY_CHAPTER).flatMap(([chap, list]) =>
         list.map(name => ({ name, chapter: chap }))
       );
@@ -924,9 +927,666 @@
       document.getElementById("item-filter-chap").addEventListener("change", updatePartyItemOptions);
       document.getElementById("item-filter-name").addEventListener("input", updatePartyItemOptions);
       updatePartyItemOptions();
+      ['p1', 'p2', 'p3'].forEach(prefix => {
+        document.getElementById(prefix + '-item').addEventListener("change", applyParty);
+      });
 
       applyParty();
     }
+    const ITEM_FUSIONS = [
+  // 序章
+  { a: "カニ鎌", b: "金のかけら", result: "蟹甲羅" },
+  { a: "霧の水鏡", b: "魔夜中の紋章", result: "霧雨の勲章" },
+  { a: "銀鎖のネックレス", b: "異界の杖", result: "銀月の槍" },
+  { a: "グレン・ブレイド", b: "闇のグレーン", result: "紅蓮の剣" },
+  { a: "シャレたスカーフ", b: "太古の基板", result: "バブルシステム" },
+  { a: "古代の秘石", b: "太古の基板", result: "バブルシステム" },
+  { a: "霧の水鏡", b: "雪夜の結晶", result: "吹雪の結晶" },
+  { a: "ケモノの毛", b: "二角獣のツノ", result: "悪い夢" },
+  { a: "白いヒラヒラ", b: "竜の肝", result: "ホワイトワンド" },
+  { a: "見習い騎士のマント", b: "夜のマント", result: "魔夜中のマント" },
+  { a: "ドルフィンパドル", b: "血濡れのモルト", result: "ドルフィンパドル改" },
+  // 第1章
+  { a: "青竜のツメ", b: "波乗りの槍", result: "海鳴りの槍" },
+  { a: "ガントレット", b: "黄金の粉", result: "黄金竜のウロコ" },
+  { a: "竜のヒゲ", b: "黄金の粉", result: "黄金竜のヒゲ" },
+  { a: "白銀の粉", b: "ガントレット", result: "銀竜のウロコ" },
+  { a: "白銀の粉", b: "竜のヒゲ", result: "銀竜のヒゲ" },
+  { a: "金砕棒", b: "特攻服", result: "極特服" },
+  { a: "りゅうぜん香", b: "ソラクジラのヒゲ", result: "ソラクジラの大ヒゲ" },
+  { a: "ソラクジラのヒゲ", b: "ふわふわの毛", result: "ソラクジラのヒレ" },
+  { a: "花弁の結晶", b: "蓑", result: "花房の結晶" },
+  { a: "魔貝", b: "ぽわんぽわん", result: "ひび割れた形見" },
+  { a: "潮盈珠", b: "波浪のびく", result: "燃ゆる水" },
+  { a: "潮乾珠", b: "海鳴りの槍", result: "海神の釣針" },
+  // 第2章
+  { a: "砂漠のお守り", b: "暗黒竜のツメ", result: "暗黒曜石" },
+  { a: "炎迅オイル", b: "無頼気オイル", result: "邪神の妖甕" },
+  { a: "ネジ", b: "ハート", result: "サークル" },
+  { a: "千刃のベルト", b: "猛火の槌", result: "破壊の刃車" },
+  { a: "古びた銃", b: "無幻の誓い", result: "無幻戦士の銃" },
+  { a: "渇きのリング", b: "ルフの鶏冠", result: "ルフソウル" },
+  // 第3章
+  { a: "風隠伏流水", b: "若月の真露", result: "緋月の真露" },
+  { a: "岩融の柄", b: "風しずくの種", result: "勧進帳" },
+  { a: "そよ風のマフラー", b: "クレセント・シロップ", result: "水凪のマント" },
+  { a: "ドラゴニックソウル", b: "涙竜の帷", result: "虹色の羽根" },
+  { a: "天狗砥石", b: "秘剣雷切", result: "秘剣七笑" },
+  { a: "ふしぎな笹葉", b: "ふしぎな羽衣", result: "女神の羽衣" },
+  // 第4章
+  { a: "エルフのフード", b: "狂気のマント", result: "禁忌のフード" },
+  { a: "救命薬", b: "強壮剤", result: "黒い衝動" },
+  { a: "救命薬", b: "邪帝トゲトゲ", result: "絶命薬" },
+  { a: "クリムゾン霊気", b: "小悪魔サテン", result: "レッドホットスーツ" },
+  { a: "絶命薬", b: "マキシマクスカリバー", result: "抗熱瘴薬" },
+  { a: "豪魔の炎", b: "マクスカリバー", result: "マキシマクスカリバー" },
+  { a: "竜角", b: "竜角", result: "大竜角" },
+  { a: "邪悪なシルク", b: "魔性のレザー", result: "魔公爵のマント" },
+  // 第5章
+  { a: "ラファエルの羽根", b: "ガブリエルの羽根", result: "神々の翼" },
+  { a: "神々の翼", b: "ゴッドサークル", result: "大天輪" },
+  { a: "こおりのかたまり", b: "ミゾレ", result: "ナダレダレ" },
+  { a: "魔皇の氷冠", b: "もくず", result: "人魚の氷宝" },
+  { a: "氷花のマイク", b: "聖天使の輪", result: "氷解のマイク" },
+  { a: "魔唱の魔晶", b: "ミラードーム", result: "魔唱のマイク" },
+  { a: "鏡のかけら", b: "ミラーボール", result: "ミラードーム" },
+  // 第6章
+  { a: "命のダイヤ", b: "灯の魂", result: "青き希望のダイヤ" },
+  { a: "アテナの鏡", b: "女神の聖油", result: "イージスの盾" },
+  { a: "黄金の粉", b: "竜の骨", result: "黄金の骨" },
+  { a: "黄金の骨のかけら", b: "灯の魂", result: "頭骨のランタン" },
+  { a: "不死鳥の飾り羽", b: "亡者の毛束", result: "鉄の心臓" },
+  { a: "ラダマンティウム", b: "冥府の鍵", result: "ゲヘナの鍵" },
+  { a: "二.五彩棒", b: "二.五彩棒", result: "五彩棒" },
+  { a: "死神の鎌", b: "デストルドー", result: "死の鎌" },
+  { a: "呪液", b: "魔王の石", result: "魔界の樹液" },
+  { a: "墓掘刃", b: "冥途のろうそく", result: "寿冥のろうそく" },
+  { a: "聖騎士の書", b: "ダイヤのかけら", result: "叙聖の書" },
+  { a: "僧侶の書", b: "ダイヤのかけら", result: "神品の書" },
+  { a: "デスサイズ", b: "ヘルフラグ", result: "デスサイズヘルフラグ" },
+  { a: "ドラゴンパール", b: "光のダイヤ", result: "ホワイトクリスタル" },
+  // 外伝
+  { a: "天竜の快槍", b: "天竜鱗", result: "真・天竜の快槍" },
+  { a: "天竜の月杖", b: "天竜鱗", result: "真・天竜の月杖" },
+  { a: "天竜の巧刃", b: "天竜鱗", result: "真・天竜の巧刃" },
+  { a: "天竜の聖剣", b: "天竜鱗", result: "真・天竜の聖剣" },
+  { a: "天竜の俊刃", b: "天竜鱗", result: "真・天竜の俊刃" },
+  { a: "天竜の法環", b: "天竜鱗", result: "真・天竜の法環" },
+  { a: "天竜の宝刀", b: "天竜鱗", result: "真・天竜の宝刀" },
+  { a: "天竜の怜剣", b: "天竜鱗", result: "真・天竜の怜剣" },
+  { a: "風の竜盃", b: "竜血晶", result: "風の竜血盃" },
+  { a: "地の竜甕", b: "竜血晶", result: "地の竜血甕" },
+  { a: "炎の竜樽", b: "竜血晶", result: "炎の竜血樽" },
+  { a: "水の竜杯", b: "竜血晶", result: "水の竜血杯" }
+];
+
+// ② BOSS または Lv10(Lv9→バトル後10含む) ＋ 専用アイテム でイラストチェンジ（抽選リセット）
+const ILLUST_CHANGE_ITEMS = {
+  // 序章
+  "炎情召喚師ヒート": ["炎情の言霊"],
+  "カニクラブ": ["カニ鎌", "蟹甲羅"],
+  "霧雨の将グレン": ["霧雨の勲章"],
+  "邪神バスカー": ["邪神の魔樽"],
+  "我竜ゼノドラゴン": ["ゼノソウル"],
+  "ゼノゴン": ["ゼノハート"],
+  "魔姫カーリィ": ["破壊神の敷物"],
+  "プロトタイプ Twin-Bee": ["バブルシステム"],
+  "雪狼ガルム": ["吹雪の結晶"],
+  "重竜ベヒモス": ["ふわふわの毛"],
+  "白の女王": ["ホワイトワンド"],
+  "魔王バスカー": ["魔界の樽"],
+  "魔王ムウス": ["魔界ムース"],
+  "紅蓮の騎士スタン": ["魔夜中の紋章"],
+  "レッドドラゴン": ["レッドソウル"],
+  // 第1章
+  "守護竜アーケロン": ["アーケンソウル"],
+  "女神アルテミス": ["アルテミスの弓"],
+  "ゴールドドラゴン": ["黄金の粉"],
+  "極赤鬼": ["極特服"],
+  "邪神オロロソ": ["邪神ゴブレット"],
+  "赤魔導師ポワン": ["ずきんずきん"],
+  "シルバードラゴン": ["白銀の粉"],
+  "花狼ガルム": ["花房の結晶"],
+  "ブルードラゴン": ["ブルーソウル"],
+  "焔のマヨリ": ["燃ゆる水"],
+  "魔王オロロソ": ["竜宮ゴブレット"],
+  "波浪騎士トリト": ["海神の釣針"],
+  // 第2章
+  "暗黒竜ファヴニール": ["イエローソウル"],
+  "イシス": ["イシスの石椅子"],
+  "プロトタイプcodeⅣ": ["古代の秘石"],
+  "雲狼ガルム": ["彩雲の結晶"],
+  "魔王アラキシュ": ["砂縛の甕"],
+  "邪神アラキシュ": ["邪神の妖甕"],
+  "Dr.フランケン": ["ハート"],
+  "機竜ドラコマキナ": ["破壊の刃車"],
+  "導きの精霊イブリス": ["導きのエレメント"],
+  "無幻銃士ダルタン": ["無幻の誓い"],
+  "冥界神アヌビス": ["冥界神の石版"],
+  "ひな鳥ルフ": ["ルフの鶏冠"],
+  // 第3章
+  "風隠の族長オロシ": ["風しずくの種"],
+  "烈風のナギ": ["風凪のマント"],
+  "龍神ククルカン": ["グリーンソウル"],
+  "真竜人ドラン": ["トモダチの証"],
+  "信獣シナプス": ["ニューロシグナル"],
+  "涙竜ナキサワメ": ["玻璃の涙"],
+  "剣聖ヒエン": ["秘剣雷切"],
+  "風隠の主ナナワライ": ["風隠伏流水"],
+  "女神アメノウズメ": ["ふしぎな羽衣"],
+  "月狼ガルム": ["満月の結晶"],
+  "水天のナギ": ["水凪のマント"],
+  "邪神ソジュ": ["夜陰の鏡月"],
+  "魔王ソジュ": ["宵の鏡月"],
+  // 第4章
+  "禁断のフルドフォルク": ["禁断の仮面"],
+  "豪魔騎士マクス": ["豪魔の炎"],
+  "彩魔エストリエ": ["蠱惑のサテン"],
+  "魔公爵アスタロト": ["邪悪なシルク"],
+  "スカーレッド・ドラゴン": ["スカーレッドソウル"],
+  "大角竜イルベガン": ["大竜角"],
+  "狂魔アルルカン": ["道化のカード"],
+  "堅牢騎士クラン": ["友との戦跡"],
+  "邪帝エラドーラ": ["噴炎の蹄鉄"],
+  "魔王ベルゼブブ": ["暴食のマント"],
+  "魔皇エラドーラ": ["魔界アガベ"],
+  "大魔女ロジェステ": ["魔導の指輪"],
+  "炎竜サラマンダー": ["レッドスピリット"],
+  // 第5章
+  "アーティスト・ヴェッチ": ["アイシングロゼット"],
+  "鏡竜リフレクドラゴン": ["極光反射壁"],
+  "ドラキュラ": ["懐中時計"],
+  "大天使ミカエル": ["ゴッドサークル"],
+  "グランブルー・ドラゴン": ["グランブルーソウル"],
+  "古代兵器モアイ": ["古代石"],
+  "女神ノート": ["霜のたてがみ"],
+  "奈落の人魚セイレン": ["人魚の氷宝"],
+  "虹眼のヘイムダル": ["ビフレスト"],
+  "魔皇ミード": ["百歌蜜"],
+  "凍竜フロストドラゴン": ["ブルースピリット"],
+  "真実の精トゥルース": ["ミラードーム"],
+  "イエイエティ": ["雪男の足跡"],
+  "邪帝ミード": ["連解蜜"],
+  // 第6章
+  "命の騎士ダイヤ": ["命のダイヤ"],
+  "スカルボーンドラゴン": ["黄金の骨のかけら"],
+  "魔皇アウスレーゼ": ["貴腐人のスカーフ"],
+  "邪帝アウスレーゼ": ["貴腐人のショール"],
+  "不動の死神タナト": ["鉄の心臓"],
+  "獄長牛頭馬頭": ["五彩棒"],
+  "死霊使いワイト": ["コワイトハウス"],
+  "死神グリム": ["死神の鎌"],
+  "死神王モート": ["呪液"],
+  "漆黒竜ファヴニール": ["ダークソウル"],
+  "獄卒ゴズ": ["大饗筋サポーター"],
+  "獄卒メズ": ["大競筋サポーター"],
+  "ホワイトドラゴン": ["ドラゴンパール"],
+  "首無騎士デュラハン": ["ヘルフラグ"],
+  "死神ラダマンティス": ["冥府の鍵"],
+  "女神パラスアテナ": ["女神の聖油"],
+  // 外伝
+  "葬送のフリーレン": ["鏡蓮華の指輪"],
+  "大魔王アラキシュ": ["乾渇の枯露果実"],
+  "トレーニー・アリア": ["銀の亜鈴"],
+  "クリスタルドラゴン": ["クリスタルソウル"],
+  "オーディン": ["グングニル"],
+  "破壊神マハデーヴァ": ["三叉戟"],
+  "大魔王オロロソ": ["超熟オロロ蘇"],
+  "トレーニー・シャッパ": ["ビーチサンドバッグ"],
+  "魔王リヴィエール": ["魔王のオーブ"],
+  "大魔王バスカー": ["魔界エイジング樽"],
+  "大魔王ムウス": ["魔界プレミアムース"],
+  "魔王レオナーレ": ["ヤギ肉くん"],
+  "獄王閻魔": ["ヤットコのカタワレ"],
+  "大魔王ソジュ": ["夜夜中の霞月"],
+  "龍王ライシーヤ": ["龍絶蘭"]
+};
+
+// ③ 合体・進化レシピ（{ a, b, lv10A, lv10B, item } の配列）
+// a / b: モンスター名（"*" なし、1体だけ使う進化は b: null）
+// item: 必要アイテム名（不要なら null）
+const FUSION_RECIPES = {
+  // --- 序章 ---
+  "スライム・ドラゴン": [
+    { a: "スライム", b: "ゼノゴン" },
+    { a: "スライム", b: "プチドラゴン" },
+    { a: "スライム", b: "ベヒ" }
+  ],
+  "スライム・シルバー": [
+    { a: "スライム", b: "赤のプリンセス" },
+    { a: "スライム", b: "戦士スタン" },
+    { a: "スライム", b: "魔法使いマナナ" },
+    { a: "スライム", b: "ボット02" },
+    { a: "スライム", b: "炎の召喚士ヒート" },
+    { a: "スライム", b: "波戦士トリト" },
+    { a: "スライム", b: "拳士シャッパ" },
+    { a: "スライム", b: "スフィ" },
+    { a: "スライム", b: "海賊アンカー" }
+  ],
+  "スライム・ゴールド": [
+    { a: "スライム・シルバー", b: "呪師テングリ" },
+    { a: "スライム・シルバー", b: "魔獣クイックシルバー" }
+  ],
+  "スライム・マナ": [
+    { a: "スライム・ゴールド", b: "魔王バスカー" },
+    { a: "スライム・ゴールド", b: "魔姫カーリィ" },
+    { a: "スライム・ゴールド", b: "魔王ムウス" },
+    { a: "スライム・ゴールド", b: "魔王オロロソ" }
+  ],
+  "剣士グレン": [
+    { a: "戦士スタン", b: "プチクラブ" },
+    { a: "赤のプリンセス", b: "ボット02" }
+  ],
+  "騎士アリア": [
+    { a: "戦士スタン", b: "剣士グレン" },
+    { a: "魔法使いマナナ", b: "赤のプリンセス" }
+  ],
+  "ラクシャーサ": [
+    { a: "戦士スタン", b: "トロル" },
+    { a: "戦士スタン", b: "ジバクガエル" }
+  ],
+  "ドーシュ": [
+    { a: "戦士スタン", b: "魔法使いマナナ" },
+    { a: "魔法使いマナナ", b: "ボット02" }
+  ],
+  "白の女王": [
+    { a: "赤の女王", b: "ランスロット" },
+    { a: "赤の女王", b: "重竜ベヒモス" }
+  ],
+  "黒戦士スタン": [
+    { a: "戦士スタン", b: "魔獣ギリメ" },
+    { a: "戦士スタン", b: "魔王ムウス" }
+  ],
+  "邪神バスカー": [
+    { a: "魔王バスカー", lv10A: true, item: "闇のグレーン" }
+  ],
+  "悪鬼ラクシャーサ": [{ a: "狂戦士ラクシャーサ", lv10A: true, item: "悪鬼の兜" }],
+  "火炎召喚士ヒート": [{ a: "炎の召喚士ヒート", lv10A: true, item: "火炎魔法魂" }],
+  "炎情召喚師ヒート": [{ a: "火炎召喚士ヒート", lv10A: true, item: "火炎魔法魂" }],
+  "カニクラブ": [{ a: "プチクラブ", lv10A: true, item: "蟹甲羅" }],
+  "親衛騎士アリア": [
+    { a: "騎士アリア", item: "銀月の槍" },
+    { a: "騎士アリア", lv10A: true, item: "銀鎖のネックレス" },
+    { a: "トレーニー・アリア", item: "銀鎖のネックレス" }
+  ],
+  "紅蓮の騎士スタン": [
+    { a: "黒紅騎士スタン", lv10A: true, item: "紅蓮の剣" },
+    { a: "黒紅騎士スタン", item: "魔夜中のマント" }
+  ],
+  "霧雨の将グレン": [{ a: "霧の剣士グレン", lv10A: true, item: "グレン・ブレイド" }],
+  "湖の騎士ランスロット": [{ a: "ランスロット", lv10A: true, item: "湖面の剣" }],
+  "我竜ゼノドラゴン": [{ a: "ゼノドラン", lv10A: true, item: "ゼノカウル" }],
+  "プロトタイプ Twin-Bee": [
+    { a: "ツインビー", lv10A: true, item: "太古の基板" },
+    { a: "ツインビー", item: "バブルシステム" }
+  ],
+  "弩使いドーシュ": [
+    { a: "ドーシュ", lv10A: true, item: "怒弩" },
+    { a: "ドーシュ", item: "努怒弩" }
+  ],
+  "狂戦士ラクシャーサ": [
+    { a: "ラクシャーサ", lv10A: true, item: "ドルフィンパドル" },
+    { a: "ラクシャーサ", item: "ドルフィンパドル改" }
+  ],
+  "雪狼ガルム": [
+    { a: "ガルル", item: "吹雪の結晶" },
+    { a: "ガルル", lv10A: true, item: "雪夜の結晶" }
+  ],
+  "魔獣ギリメ": [{ a: "魔獣クイックシルバー", item: "悪い夢" }],
+
+  // --- 第1章 ---
+  "側近アズミ": [
+    { a: "クリオネ", b: "チビドラゴン" },
+    { a: "クリオネ", b: "波戦士トリト" },
+    { a: "クリオネ", b: "乙姫マヨリ" }
+  ],
+  "ゴバクガエル": [
+    { a: "ジバクガエル", b: "ジャリゲータ" },
+    { a: "ジバクガエル", b: "クリオネ" },
+    { a: "ジバクガエル", b: "コッパミジンコ" }
+  ],
+  "ボット02 通信型": [
+    { a: "ボット02", b: "ギン" },
+    { a: "ボット02", b: "拳士シャッパ" }
+  ],
+  "拳闘士シャッパ": [
+    { a: "拳士シャッパ", lv10A: true },
+    { a: "トレーニー・シャッパ", item: "ガントレット" }
+  ],
+  "竜宮の使いギョギョ": [
+    { a: "ギョギョ", b: "魔王オロロソ" },
+    { a: "ギョギョ", b: "邪神オロロソ" }
+  ],
+  "小赤鬼": [
+    { a: "波戦士トリト", b: "コッパミジンコ" },
+    { a: "拳士シャッパ", b: "コッパミジンコ" },
+    { a: "チビドラゴン", b: "コッパミジンコ" }
+  ],
+  "乙姫マヨリ": [
+    { a: "ジャリゲータ", b: "波戦士トリト" },
+    { a: "ジャリゲータ", b: "拳士シャッパ" },
+    { a: "側近アズミ", b: "ブルドゴン" },
+    { a: "側近アズミ", b: "ナラクジラ" },
+    { a: "忠臣アズミ", b: "ブルゴン" }
+  ],
+  "女神アルテミス": [
+    { a: "乙姫マヨリ", b: "魔獣ギリメ" },
+    { a: "乙姫マヨリ", b: "魔獣クイックシルバー" },
+    { a: "泡魔導師ポワン", b: "魔獣ギリメ" },
+    { a: "泡魔導師ポワン", b: "魔獣クイックシルバー" }
+  ],
+  "焔のマヨリ": [
+    { a: "乙姫マヨリ", b: "波浪騎士トリト" },
+    { a: "乙姫マヨリ", b: "邪神オロロソ" }
+  ],
+  "スライム・アビス": [
+    { a: "スライム・シルバー", b: "クリオネ" },
+    { a: "スライム・シルバー", b: "ギョ" }
+  ],
+  "スライム・フレア": [
+    { a: "スライム・シルバー", b: "コッパミジンコ" },
+    { a: "スライム・シルバー", b: "小赤鬼" }
+  ],
+  "守護竜アーケロン": [{ a: "アーケロン", lv10A: true, item: "アーケンショール" }],
+  "怒の海賊アンカー": [{ a: "海賊アンカー", lv10A: true, item: "怒りの錨" }],
+  "ブルードラゴン": [
+    { a: "ブルドゴン", item: "海鳴りの槍" },
+    { a: "ブルドゴン", lv10A: true, item: "ブルーソウル" }
+  ],
+  "ゴールドドラゴン": [
+    { a: "シロガネ", item: "黄金竜のウロコ" },
+    { a: "シロガネ", lv10A: true, item: "黄金竜のヒゲ" }
+  ],
+  "海翁アンカー": [{ a: "怒の海賊アンカー", lv10A: true, item: "海翁のコート" }],
+  "シルバードラゴン": [
+    { a: "シロガネ", item: "銀竜のウロコ" },
+    { a: "シロガネ", lv10A: true, item: "銀竜のヒゲ" }
+  ],
+  "邪神オロロソ": [
+    { a: "魔王オロロソ", lv10A: true, item: "熟成オロロ蘇" },
+    { a: "魔王オロロソ", item: "燃ゆる水" }
+  ],
+  "スフク": [{ a: "スフィ", lv10A: true, item: "スフクの羽根" }],
+  "ソラクジラ": [
+    { a: "コッパミジンコ", lv10A: true, item: "ソラクジラの大ヒゲ" },
+    { a: "ナラクジラ", lv10A: true, item: "ソラクジラのヒレ" }
+  ],
+  "極赤鬼": [{ a: "赤鬼", lv10A: true, item: "特攻服" }],
+  "スフク・ナイル": [
+    { a: "スフィ", lv10A: true, item: "ナイルの宝石" },
+    { a: "スフク", item: "ナイルの宝石" }
+  ],
+  "花狼ガルム": [
+    { a: "ガルル", lv10A: true, item: "花弁の結晶" },
+    { a: "ガルル", item: "花房の結晶" }
+  ],
+  "波浪騎士トリト": [{ a: "波騎士トリト", lv10A: true, item: "波浪のびく" }],
+  "赤魔導師ポワン": [{ a: "泡魔導師ポワン", lv10A: true, item: "ひび割れた形見" }],
+  "ギョギョ": [{ a: "ギョ", lv10A: true, item: "魅惑のコイン" }],
+  "ナラクジラ": [{ a: "コッパミジンコ", lv10A: true, item: "りゅうぜん香" }],
+  "ワニゲータ": [{ a: "ジャリゲータ", lv10A: true, item: "ワニロール" }],
+
+  // --- 第2章 ---
+  "キュピィ・怒": [
+    { a: "キュピィ", b: "キュピィ" },
+    { a: "キュピィ", b: "クリオネ" }
+  ],
+  "トリケラ": [
+    { a: "キュピィ", b: "旅人アラン" },
+    { a: "キュピィ", b: "旅人シャール" }
+  ],
+  "フランケンボーイ": [
+    { a: "旅人アラン", b: "アヌビス" },
+    { a: "ドラコ", b: "旅人シャール" },
+    { a: "ドラコ", b: "ステゴ" }
+  ],
+  "プロトタイプcodeⅢ": [
+    { a: "ボット02", b: "機将アクセラ" },
+    { a: "ボット03", b: "鍛冶師アンヴィル" },
+    { a: "ボット02 通信型", b: "鍛冶師アンヴィル" }
+  ],
+  "イシス": [{ a: "アヌビス", b: "鍛冶師アンヴィル" }],
+  "機将アクセラ": [{ a: "機臣ブレイク", b: "鍛冶師アンヴィル" }],
+  "スライム・アース": [
+    { a: "スライム・シルバー", b: "クロドラゴン" },
+    { a: "スライム・シルバー", b: "アヌビス" }
+  ],
+  "スライム・エアロ": [
+    { a: "スライム・シルバー", b: "バクチガエル" },
+    { a: "スライム・シルバー", b: "ひな鳥ルフ" }
+  ],
+  "暗黒竜ファヴニール": [
+    { a: "ファヴニ", item: "暗黒曜石" },
+    { a: "ファヴニ", lv10A: true, item: "イエローソウル" }
+  ],
+  "邪神アラキシュ": [{ a: "魔王アラキシュ", lv10A: true, item: "乾渇の果実" }],
+  "Dr.フランケン": [{ a: "フランケンボーイ", lv10A: true, item: "サークル" }],
+  "雲狼ガルム": [
+    { a: "ガルル", item: "彩雲の結晶" },
+    { a: "ガルル", lv10A: true, item: "青雲の結晶" }
+  ],
+  "恐竜戦士ステゴ": [{ a: "ステゴ", lv10A: true, item: "ステゴゲノム" }],
+  "恐竜戦士トリケラ": [{ a: "トリケラ", lv10A: true, item: "トリケラゲノム" }],
+  "フランケン": [{ a: "フランケンボーイ", lv10A: true, item: "ハート" }],
+  "機竜ドラコマキナ": [{ a: "ドラコギア", lv10A: true, item: "破壊の刃車" }],
+  "導きの精霊イブリス": [{ a: "精霊イブリス", lv10A: true, item: "導きのエレメント" }],
+  "無幻銃士ダルタン": [{ a: "放浪のシャルル", lv10A: true, item: "無幻戦士の銃" }],
+  "冥界神アヌビス": [{ a: "アヌビス", lv10A: true, item: "冥界の天秤" }],
+  "ロック鳥ルフ": [{ a: "ひな鳥ルフ", lv10A: true, item: "ルフソウル" }],
+
+  // --- 第3章 ---
+  "ドラン": [
+    { a: "風のナギ", b: "オグナ" },
+    { a: "公子イスル", b: "オグナ" },
+    { a: "ミズチ", b: "ケツアル" }
+  ],
+  "オニワカ": [
+    { a: "風のナギ", b: "ドラコッコ" },
+    { a: "風のナギ", b: "森の子クルミ" },
+    { a: "風のナギ", b: "公子イスル" }
+  ],
+  "アメノウズメ": [
+    { a: "神楽アカネ", b: "ヤマト" },
+    { a: "神楽アオイ", b: "竜人ドラン" }
+  ],
+  "風隠の族長オロシ": [
+    { a: "僧兵オニワカ", b: "神楽アオイ" },
+    { a: "僧兵オニワカ", b: "神楽アカネ" },
+    { a: "僧兵オニワカ", b: "疾風のナギ" },
+    { a: "剣聖ヒエン", b: "風隠の主ナナワライ" }
+  ],
+  "水天のナギ": [{ a: "疾風のナギ", b: "魔王子イスル" }],
+  "神楽アオイ": [{ a: "森の子クルミ", lv10A: true, item: "蒼い実" }],
+  "神楽アカネ": [{ a: "森の子クルミ", lv10A: true, item: "朱い実" }],
+  "邪神ソジュ": [{ a: "魔王ソジュ", item: "緋月の真露" }],
+  "烈風のナギ": [{ a: "疾風のナギ", lv10A: true, item: "風凪のマント" }],
+  "風隠坊オニワカ": [{ a: "僧兵オニワカ", lv10A: true, item: "勧進帳" }],
+  "ヤマト": [{ a: "オグナ", lv10A: true, item: "草薙剣" }],
+  "龍神ククルカン": [
+    { a: "ケツアルカトル", lv10A: true, item: "グリーンソウル" },
+    { a: "ケツアルカトル", item: "虹色の羽根" }
+  ],
+  "魔公子イスル": [{ a: "公子イスル", lv10A: true, item: "クレセント・ドロップ" }],
+  "真竜人ドラン": [{ a: "竜人ドラン", lv10A: true, item: "真竜の証" }],
+  "信獣シナプス": [{ a: "シナプス", lv10A: true, item: "つややかな毛玉" }],
+  "月狼ガルム": [
+    { a: "ガルル", lv10A: true, item: "半月の結晶" },
+    { a: "ガルル", item: "満月の結晶" }
+  ],
+  "剣聖ヒエン": [
+    { a: "剣豪ヒエン", item: "秘剣七笑" },
+    { a: "剣豪ヒエン", lv10A: true, item: "秘剣雷切" }
+  ],
+  "魔王子イスル": [{ a: "魔公子イスル", lv10A: true, item: "水凪のマント" }],
+  "夢獣バク": [{ a: "バク", lv10A: true, item: "夢獣のしっぽ" }],
+  "女神アメノウズメ": [{ a: "アメノウズメ", lv10A: true, item: "女神の羽衣" }],
+
+  // --- 第4章 ---
+  "アルレッキーノ": [
+    { a: "ブブ", b: "悪魔マクス" },
+    { a: "ブブ", b: "魔女ロジェステ" }
+  ],
+  "フルド": [
+    { a: "悪魔マクス", b: "アルフ" },
+    { a: "アルフ", b: "アスタ" }
+  ],
+  "重戦士クラン": [
+    { a: "悪魔マクス", b: "衛生兵ラプラ" },
+    { a: "衛生兵ラプラ", b: "魔女ロジェステ" }
+  ],
+  "デメラ": [
+    { a: "ブブ", b: "アスタ" },
+    { a: "衛生兵ラプラ", b: "アスタ" },
+    { a: "アスタ", b: "魔王リヴィエール" }
+  ],
+  "スカーレッド・ドラゴン": [
+    { a: "レッドドラゴン", b: "サラマンダー", lv10B: true },
+    { a: "レッドドラゴン", b: "炎竜サラマンダー" }
+  ],
+  "スライム・デビル": [
+    { a: "スライム", b: "悪魔マクス" },
+    { a: "スライム", b: "エスティ" },
+    { a: "スライム", b: "アスタ" },
+    { a: "スライム", b: "デメラ" }
+  ],
+  "狂魔アルルカン": [{ a: "アルレッキーノ", lv10A: true, item: "狂気のマント" }],
+  "禁断のフルドフォルク": [{ a: "フルドフォルク", lv10A: true, item: "禁忌のフード" }],
+  "魔王ベルゼブブ": [{ a: "ブブ", lv10A: true, item: "クラウン" }],
+  "悪魔デメララ": [{ a: "デメラ", lv10A: true, item: "黒い衝動" }],
+  "救命士ラプラ": [{ a: "絶命士ラプラ", lv10A: true, item: "抗熱瘴薬" }],
+  "邪帝エラドーラ": [{ a: "魔皇エラドーラ", lv10A: true, item: "邪帝トゲトゲ" }],
+  "絶命士ラプラ": [{ a: "救命士ラプラ", item: "絶命薬" }],
+  "豪魔騎士マクス": [{ a: "魔騎士マクス", lv10A: true, item: "マキシマクスカリバー" }],
+  "魔公爵アスタロト": [{ a: "悪魔アスタロ", lv10A: true, item: "魔公爵のマント" }],
+  "彩魔エストリエ": [{ a: "悪魔エスティ", lv10A: true, item: "魔智針" }],
+  "フルドフォルク": [{ a: "フルド", item: "妖精のお守り" }],
+  "アルフリック": [{ a: "アルフ", item: "妖精の笛" }],
+  "夜魔デメララ": [{ a: "悪魔デメララ", lv10A: true, item: "邪な本能" }],
+  "炎竜サラマンダー": [{ a: "サラマンダー", lv10A: true, item: "レッドスピリット" }],
+  "大魔女ロジェステ": [{ a: "魔女ロジェステ", lv10A: true, item: "レッドホットスーツ" }],
+
+  // --- 第5章 ---
+  "アルカ": [
+    { a: "歌士ヴェッチ", b: "モアイ" },
+    { a: "歌士ヴェッチ", b: "ボット02 拍子型" },
+    { a: "モアイ", b: "ボット02 拍子型" }
+  ],
+  "アイシー": [
+    { a: "奏士チューン", b: "歌士ヴェッチ" },
+    { a: "奏士チューン", b: "ボット02 拍子型" }
+  ],
+  "イエティ": [
+    { a: "歌士ヴェッチ", b: "ボーカリスト・ヴェッチ" },
+    { a: "歌士ヴェッチ", b: "人魚セイレン" }
+  ],
+  "女神ノート": [
+    { a: "トール", b: "ギタリスト・チューン" },
+    { a: "トール", b: "魔人魚セイレン" }
+  ],
+  "グランブルー・ドラゴン": [
+    { a: "ブルードラゴン", b: "フロスドラゴ", lv10B: true },
+    { a: "ブルードラゴン", b: "凍竜フロストドラゴン" }
+  ],
+  "ラファエル": [
+    { a: "ミカエ", b: "ギタリスト・チューン" },
+    { a: "ミカエ", b: "アイシクル" }
+  ],
+  "ガブリエル": [
+    { a: "ミカエ", b: "オータコン" },
+    { a: "ミカエ", b: "ドラキュラ" }
+  ],
+  "スライム・エンジェル": [
+    { a: "スライム", b: "歌士ヴェッチ" },
+    { a: "スライム", b: "女神ノート" }
+  ],
+  "奈落の人魚セイレン": [{ a: "魔人魚セイレン", lv10A: true, item: "暗礁のハープ" }],
+  "ドラキュラ": [{ a: "アルカード", lv10A: true, item: "懐中時計" }],
+  "古代兵器モアイ": [{ a: "モアイ", lv10A: true, item: "古代石" }],
+  "真実の精トゥルース": [{ a: "鏡の精トゥルース", lv10A: true, item: "真実の手鏡" }],
+  "大天使ミカエル": [{ a: "ミカエ", lv10A: true, item: "大天輪" }],
+  "オータコン": [{ a: "コタコン", lv10A: true, item: "タコツ帽" }],
+  "アバランシェ": [
+    { a: "アイシクル", item: "ナダレダレ" },
+    { a: "アイシクル", lv10A: true, item: "ミゾレ" }
+  ],
+  "虹眼のヘイムダル": [{ a: "ヘイムダル", lv10A: true, item: "虹色の眼" }],
+  "アーティスト・ヴェッチ": [{ a: "ボーカリスト・ヴェッチ", lv10A: true, item: "氷解のマイク" }],
+  "ボット03 弦楽型": [{ a: "ボット02 拍子型", lv10A: true, item: "ファミリア・バス" }],
+  "凍竜フロストドラゴン": [{ a: "フロスドラゴ", lv10A: true, item: "ブルースピリット" }],
+  "人魚セイレン": [{ a: "クリオネ", item: "魔海のハープ" }],
+  "魔皇ミード": [{ a: "アーティスト・ヴェッチ", item: "魔唱のマイク" }],
+  "邪帝ミード": [{ a: "魔皇ミード", lv10A: true, item: "魔唱の魔晶" }],
+  "バト": [{ a: "アルカ", item: "魔導器" }],
+
+  // --- 第6章 ---
+  "ジュバクガエル": [
+    { a: "ジバクガエル", b: "アルラ" },
+    { a: "ジバクガエル", b: "グリ" },
+    { a: "ジバクガエル", b: "魔皇アウスレーゼ" },
+    { a: "ジバクガエル", b: "ボーン" }
+  ],
+  "僧侶クリフ": [
+    { a: "アルラ", b: "聖堂騎士ユーグ" },
+    { a: "パール", b: "聖堂騎士ユーグ" },
+    { a: "グリ", b: "聖堂騎士ユーグ" }
+  ],
+  "ラダ": [
+    { a: "墓守エルメ", b: "アルラ" },
+    { a: "墓守エルメ", b: "パール" },
+    { a: "墓守エルメ", b: "グリ" }
+  ],
+  "死神モート": [
+    { a: "墓守エルメ", b: "獄卒ゴズ" },
+    { a: "墓守エルメ", b: "獄卒メズ" }
+  ],
+  "アテナ": [
+    { a: "夜の騎士エルメ", b: "パドラ" },
+    { a: "聖堂騎士長ユーグ", b: "獄卒ゴズ" },
+    { a: "大僧侶クリフ", b: "獄卒メズ" }
+  ],
+  "死霊使いワイト": [
+    { a: "アルラ", b: "死神グリム" },
+    { a: "アルラ", b: "ラダマンティス" },
+    { a: "アルラウネ", b: "死神モート" }
+  ],
+  "漆黒竜ファヴニール": [{ a: "暗黒竜ファヴニール", b: "ホワイトドラゴン" }],
+  "不死鳥フェニックス": [
+    { a: "光の戦士ダイヤ", b: "不動の死神タナト" },
+    { a: "命の騎士ダイヤ", b: "ロック鳥ルフ" }
+  ],
+  "命の騎士ダイヤ": [{ a: "光の戦士ダイヤ", lv10A: true, item: "青き希望のダイヤ" }],
+  "女神パラスアテナ": [{ a: "アテナ", lv10A: true, item: "イージスの盾" }],
+  "スカルボーンドラゴン": [
+    { a: "ボーンドラゴ", item: "黄金の骨" },
+    { a: "ボーンドラゴ", item: "頭骨のランタン" }
+  ],
+  "不動の死神タナト": [
+    { a: "死神タナト", item: "鉄の心臓" },
+    { a: "死神タナト", lv10A: true, item: "死の鎌" }
+  ],
+  "死神ラダマンティス": [
+    { a: "ラダマンティス", item: "ゲヘナの鍵" },
+    { a: "ラダマンティス", lv10A: true, item: "冥府の鍵" }
+  ],
+  "死神グリム": [{ a: "グリ", lv10A: true, item: "死神の鎌" }],
+  "邪帝アウスレーゼ": [{ a: "魔皇アウスレーゼ", lv10A: true, item: "寿冥のろうそく" }],
+  "成聖正騎士ユーグ": [{ a: "聖堂騎士長ユーグ", item: "叙聖の書" }],
+  "大司教クリフ": [{ a: "大僧侶クリフ", item: "神品の書" }],
+  "首無騎士デュラハン": [{ a: "デュラハン", item: "デスサイズヘルフラグ" }],
+  "ホワイトドラゴン": [
+    { a: "ホワイドラゴ", item: "ホワイトクリスタル" },
+    { a: "ホワイドラゴ", lv10A: true, item: "ホワイトパール" }
+  ],
+  "死神王モート": [{ a: "死神モート", item: "魔界の樹液" }],
+  "獄長牛頭馬頭": [{ a: "獄卒ゴズ", b: "獄卒メズ", item: "五彩棒" }],
+
+  // --- 外伝・コラボ ---
+  "サード・ゼノドラゴン": [{ a: "我竜ゼノドラゴン", lv10A: true, b: "クリスタルドラゴン" }],
+  "クロシド・ゼノドラゴン": [{ a: "我竜ゼノドラゴン", lv10A: true, b: "クリスタルドラゴン" }],
+  "シトリン・ゼノドラゴン": [{ a: "我竜ゼノドラゴン", lv10A: true, b: "クリスタルドラゴン" }],
+  "プラシオ・ゼノドラゴン": [{ a: "我竜ゼノドラゴン", lv10A: true, b: "クリスタルドラゴン" }],
+  "葬送のフリーレン": [{ a: "フリーレン", lv10A: true, item: "フリーレンの杖" }]
+};
 
     function saveAll() {
       try {
@@ -941,7 +1601,7 @@
       const methodFilter = document.getElementById("methodFilter").value;
       const bossFilter = document.getElementById("bossFilter").value;
       const keyword = document.getElementById("search").value.trim();
-      const fusionRolls = Math.max(1, Number(document.getElementById("fusionRolls").value) || 1);
+      
       const markedOnly = document.getElementById("markedOnly").checked;
 
       const conditions = [];
@@ -975,28 +1635,28 @@
       const whereSql = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
 
       // ③ SQLで確率と期待金額を計算
+      const pStat = "((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))";
+      const battleProbExpr = `(
+        CASE
+          WHEN method = 'バトル' AND (p1_rate + p2_rate + p3_rate) > 0 THEN
+            p1_rate * ${pStat}
+            + p2_rate * (1.0 - (1.0 - ${pStat}) * (1.0 - ${pStat}))
+            + p3_rate * (1.0 - (1.0 - ${pStat}) * (1.0 - ${pStat}) * (1.0 - ${pStat}))
+          WHEN method = 'バトル' THEN
+            ${pStat} * (encounter_pct / 100.0)
+          ELSE 0.0
+        END
+      )`;
+      const totalProbExpr = `(${battleProbExpr} + ${pStat} * fusion_rolls)`;
       const costExpr = `
-        ROUND(
-          1.0 / (
-            CASE
-              WHEN method = 'バトル' AND (p1_rate + p2_rate + p3_rate) > 0 THEN
-                p1_rate * ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
-                + p2_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
-                + p3_rate * (1.0 - (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (1.0 - (hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)))
-              WHEN method = 'バトル' THEN
-                ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0)) * (encounter_pct / 100.0)
-              ELSE
-                ((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0))
-            END
-          )
-          / CASE WHEN method = '合体' THEN ? ELSE 1 END
-          * 100 + 100
-        )
+        CASE
+          WHEN ${totalProbExpr} <= 0 THEN NULL
+          ELSE ROUND(100.0 / ${totalProbExpr})
+        END
       `;
 
       const markedRes = db.exec(
-        `SELECT COUNT(*), COALESCE(SUM(${costExpr}), 0) FROM monsters WHERE marked = 1`,
-        [fusionRolls]
+        `SELECT COUNT(*), COALESCE(SUM(${costExpr}), 0) FROM monsters WHERE marked = 1`
       );
       const [selectedCount, selectedTotal] = markedRes[0].values[0];
       const summaryText = selectedCount > 0
@@ -1005,7 +1665,7 @@
 
       const sql = `
         SELECT
-          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct, p1_rate, p2_rate, p3_rate,is_boss,
+          id, name, chapter, method, can_battle, can_fusion, hp, at, sp, cmd, marked, encounter_pct, p1_rate, p2_rate, p3_rate, is_boss, fusion_rolls,
           ROUND((hp / 6.0) * (at / 6.0) * (sp / 6.0) * (cmd / 6.0) * 100, 4) AS pct,
           ${costExpr} AS cost
         FROM monsters
@@ -1013,7 +1673,7 @@
         ORDER BY id ASC;
       `;
 
-      const res = db.exec(sql, [fusionRolls, ...whereParams]);
+      const res = db.exec(sql, whereParams);
       if (res.length === 0) {
         document.getElementById("summary").textContent = summaryText;
         document.getElementById("output").innerHTML = "該当なし";
@@ -1053,7 +1713,7 @@
         let chapMarkedTotal = 0;
         let rowsHtml = "";
 
-       rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, isBoss, pct, cost]) => {
+       rows.forEach(([id, name, c, method, canBattle, canFusion, hp, at, sp, cmd, marked, encPct, p1Rate, p2Rate, p3Rate, isBoss, fusionRolls, pct, cost]) => {
           const num = hp * at * sp * cmd;
           const den = 1296;
           const g = gcd(num, den);
@@ -1061,8 +1721,10 @@
           const badgeColor = method === "合体" ? "#34d399" : "#60a5fa";
           const star = marked ? "★" : "☆";
           const starColor = marked ? "#fbbf24" : "#64748b";
-          const costNum = Number(cost);
-          if (marked) {
+          const costNum = cost != null ? Number(cost) : null;
+          const fusionLabel = fusionRolls > 0 ? `${Number(fusionRolls.toFixed(2))}回` : "0回";
+          const costLabel = costNum != null ? `${costNum.toLocaleString()}円` : "合体不可";
+          if (marked && costNum != null) {
             chapMarkedCount++;
             chapMarkedTotal += costNum;
           }
@@ -1089,19 +1751,19 @@
                   ${makeSelect(id, "速", "sp", sp)}
                   ${makeSelect(id, "コ", "cmd", cmd, true)}
                 </div>
-                ${getStatText(name, method, hp, at, sp)}
               </td>
+              <td style="text-align: right; white-space: nowrap;">${fusionLabel}</td>
               <td>
                 ${frac}<br>
                 <small style="color: #94a3b8;">${pct}%</small>
               </td>
               <td>
-                ${costNum.toLocaleString()}円
+                ${costLabel}
                 ${method === "バトル" ? `<br><small style="color:#94a3b8;">出現率 ${encPct}%${
-                (p2Rate + p3Rate) > 0
-                  ? `<br>(1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
-                  : ""
-              }</small>` : ""}
+                  (p2Rate + p3Rate) > 0
+                    ? `<br>(1体:${Math.round(p1Rate * 100)}% / 複数:${Math.round((p2Rate + p3Rate) * 100)}%)`
+                    : ""
+                }</small>` : ""}
               </td>
             </tr>
           `;
@@ -1118,8 +1780,9 @@
               <div style="overflow-x: auto;">
                 <table style="margin-top: 0;">
                   <tr>
-                    <th>モンスター名</th>
-                    <th>条件</th>
+                    <th>モンスター</th>
+                  <th>条件</th>
+                  <th>合体回数</th>
                     <th>確率</th>
                     <th>期待金額</th>
                   </tr>
@@ -1169,6 +1832,147 @@
       return res;
     }
 
+    // アイテム合体の全パターン（元の2つが消え、新アイテムが1つ増える）を展開
+function getItemStates(items) {
+  const states = [items.filter(Boolean)];
+  const seen = new Set([states[0].slice().sort().join("|")]);
+  const queue = [states[0]];
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    for (let i = 0; i < cur.length; i++) {
+      for (let j = i + 1; j < cur.length; j++) {
+        for (const f of ITEM_FUSIONS) {
+          if ((cur[i] === f.a && cur[j] === f.b) || (cur[i] === f.b && cur[j] === f.a)) {
+            const next = cur.filter((_, idx) => idx !== i && idx !== j);
+            next.push(f.result);
+            const key = next.slice().sort().join("|");
+            if (!seen.has(key)) {
+              seen.add(key);
+              states.push(next);
+              queue.push(next);
+            }
+          }
+        }
+      }
+    }
+  }
+  return states;
+}
+
+// モンスターごとの「1プレイあたりの期待合体回数」を計算
+// ※ バトル出現モンスターを使う場合は、そのモンスターが出る確率を掛ける
+function calcMonsterFusionRolls(monsterName, isBoss, partySlots, battleProbMap) {
+  const itemStates = getItemStates(partySlots.map(s => s.item));
+  const uniqueActions = new Map(); // key: 行動ID, value: 成功確率(0..1)
+
+  const addAction = (key, prob) => {
+    if (prob <= 0) return;
+    uniqueActions.set(key, Math.max(uniqueActions.get(key) || 0, prob));
+  };
+
+  // A. BOSS / Lv10(Lv9→バトル後Lv10含む) + 専用アイテム のイラストチェンジ（抽選リセット）
+  const changeItems = ILLUST_CHANGE_ITEMS[monsterName] || [];
+  if (changeItems.length > 0) {
+    partySlots.forEach((slot, idx) => {
+      if (slot.name === monsterName && (isBoss || slot.lv >= 9)) {
+        itemStates.forEach((items, stIdx) => {
+          for (const reqItem of changeItems) {
+            if (items.includes(reqItem)) {
+              addAction(`illust_${idx}_${reqItem}_${stIdx > 0 ? "fused" : "raw"}`, 1.0);
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // B. 合体・進化レシピ
+  const recipes = FUSION_RECIPES[monsterName] || [];
+  for (const r of recipes) {
+    const reqLvA = !!r.lv10A;
+    const reqLvB = !!r.lv10B;
+    const reqItem = r.item || null;
+
+    // 1体＋アイテム（またはクラスチェンジ）
+    if (!r.b) {
+      partySlots.forEach((slot, idx) => {
+        if (slot.name === r.a && (!reqLvA || slot.lv >= 9)) {
+          if (!reqItem) {
+            addAction(`evo_${idx}_${r.a}`, 1.0);
+          } else {
+            itemStates.forEach((items, stIdx) => {
+              if (items.includes(reqItem)) {
+                addAction(`evo_${idx}_${r.a}_${reqItem}_${stIdx > 0 ? "fused" : "raw"}`, 1.0);
+              }
+            });
+          }
+        }
+      });
+      continue;
+    }
+
+    // 2体合体（パーティ同士）
+    for (let i = 0; i < partySlots.length; i++) {
+      for (let j = i + 1; j < partySlots.length; j++) {
+        const s1 = partySlots[i];
+        const s2 = partySlots[j];
+        const matchDirect = s1.name === r.a && (!reqLvA || s1.lv >= 9) && s2.name === r.b && (!reqLvB || s2.lv >= 9);
+        const matchSwap = s1.name === r.b && (!reqLvB || s1.lv >= 9) && s2.name === r.a && (!reqLvA || s2.lv >= 9);
+        if (matchDirect || matchSwap) {
+          if (!reqItem) {
+            addAction(`pair_${i}_${j}_${r.a}_${r.b}`, 1.0);
+          } else {
+            itemStates.forEach((items, stIdx) => {
+              if (items.includes(reqItem)) {
+                addAction(`pair_${i}_${j}_${r.a}_${r.b}_${reqItem}_${stIdx > 0 ? "fused" : "raw"}`, 1.0);
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // 2体合体（パーティ1体 ＋ バトル出現モンスター1体）
+    // ※ Lv10指定がある側の素材は敵がLv10で出ないため除外
+    partySlots.forEach((slot, idx) => {
+      // パターン1: 手持ちがA、敵がB
+      if (slot.name === r.a && (!reqLvA || slot.lv >= 9) && !reqLvB) {
+        const pB = battleProbMap[r.b] || 0;
+        if (pB > 0) {
+          if (!reqItem) {
+            addAction(`battle_${idx}_${r.a}+${r.b}`, pB);
+          } else {
+            itemStates.forEach((items, stIdx) => {
+              if (items.includes(reqItem)) {
+                addAction(`battle_${idx}_${r.a}+${r.b}_${reqItem}_${stIdx > 0 ? "fused" : "raw"}`, pB);
+              }
+            });
+          }
+        }
+      }
+      // パターン2: 手持ちがB、敵がA
+      if (slot.name === r.b && (!reqLvB || slot.lv >= 9) && !reqLvA) {
+        const pA = battleProbMap[r.a] || 0;
+        if (pA > 0) {
+          if (!reqItem) {
+            addAction(`battle_${idx}_${r.b}+${r.a}`, pA);
+          } else {
+            itemStates.forEach((items, stIdx) => {
+              if (items.includes(reqItem)) {
+                addAction(`battle_${idx}_${r.b}+${r.a}_${reqItem}_${stIdx > 0 ? "fused" : "raw"}`, pA);
+              }
+            });
+          }
+        }
+      }
+    });
+  }
+
+  let totalRolls = 0;
+  for (const p of uniqueActions.values()) totalRolls += p;
+  return totalRolls;
+}
     function applyParty() {
       const names = [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
       const stars = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-star`).value) || 0);
@@ -1414,6 +2218,26 @@
         `クラス合計: ${baseStar} (${baseBracket}) / 合計Lv: ${baseLv}` +
         (allLv10 ? " 【全員Lv10：ボス確定枠あり】" : "") +
         (assistSummary.length > 0 ? ` / お助け: ${assistSummary.join(" / ")}` : "");
+      // パーティ3枠の情報を取得
+      const partySlots = [1, 2, 3].map(n => ({
+        name: document.getElementById(`p${n}-name`).value,
+        star: Number(document.getElementById(`p${n}-star`).value) || 0,
+        lv: Number(document.getElementById(`p${n}-lv`).value) || 1,
+        item: document.getElementById(`p${n}-item`).value || ""
+      }));
+
+      // バトルで各モンスターが1体でも出現する確率を計算
+      const battleProbMap = {};
+      const mRes = db.exec("SELECT id, name, p1_rate, p2_rate, p3_rate, is_boss FROM monsters");
+      if (mRes[0]) {
+        for (const [id, name, p1, p2, p3] of mRes[0].values) {
+          battleProbMap[name] = Math.max(battleProbMap[name] || 0, Math.min(1, (p1 || 0) + (p2 || 0) + (p3 || 0)));
+        }
+        for (const [id, name, p1, p2, p3, isBoss] of mRes[0].values) {
+          const rolls = calcMonsterFusionRolls(name, !!isBoss, partySlots, battleProbMap);
+          db.run("UPDATE monsters SET fusion_rolls = ? WHERE id = ?", [rolls, id]);
+        }
+      }
       render();
     }
 
