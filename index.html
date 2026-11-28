@@ -2001,6 +2001,10 @@ const FUSION_RECIPES = {
 
       let totalRolls = 0;
       for (const p of uniqueActions.values()) totalRolls += p;
+      if (monsterName === "死霊使いワイト") {
+    console.log("ワイト内訳:", Array.from(uniqueActions.entries()));
+  }
+  return totalRolls;
       return totalRolls;
     }
     function applyParty() {
