@@ -2549,6 +2549,28 @@ const FUSION_RECIPES = {
           }
         }
       });
+      const neededItems = new Set([...changeItems]);
+      for (const r of recipes) if (r.item) neededItems.add(r.item);
+      for (const mat of directMats) {
+        for (const cIt of (ILLUST_CHANGE_ITEMS[mat] || [])) neededItems.add(cIt);
+        for (const pre of (FUSION_RECIPES[mat] || [])) if (pre.item) neededItems.add(pre.item);
+      }
+
+      const itemCombos = [];
+      const itemList = Array.from(neededItems);
+      if (itemList.length === 0) {
+        itemCombos.push(["", "", "", ""]);
+      } else {
+        itemList.slice(0, 2).forEach(it => itemCombos.push([it, it, it, it]));
+        if (itemList.length >= 2) {
+          itemCombos.push([itemList[0], itemList[0], itemList[1], itemList[1]]);
+        }
+        for (const f of ITEM_FUSIONS) {
+          if (neededItems.has(f.result) && itemCombos.length < 4) {
+            itemCombos.push([f.a, f.b, f.result, f.result]);
+          }
+        }
+      }
       const partyCombos = [];
       for (let i = 0; i < unitArr.length; i++) {
         for (let j = i + 1; j < unitArr.length; j++) {
