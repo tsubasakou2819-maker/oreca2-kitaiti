@@ -876,18 +876,18 @@
           (nameF === "" || m.name.toLowerCase().includes(nameF))
         );
 
-        ['p1-item', 'p2-item', 'p3-item', 'key-item'].forEach(elId => {
-          const itemEl = document.getElementById(elId);
-          if (!itemEl) return;
-          const current = itemEl.value;
-          let opts = `<option value="">-- なし (${filtered.length}件) --</option>`;
-          if (current && !filtered.some(it => it.name === current)) {
-            opts += `<option value="${current}" selected>${current}</option>`;
+        ['p1', 'p2', 'p3'].forEach(prefix => {
+          const nameEl = document.getElementById(prefix + '-name');
+          const current = nameEl.value;
+          let opts = `<option value="">-- 未選択 (${filtered.length}体) --</option>`;
+          if (current && !filtered.some(m => m.name === current)) {
+            const st = (window.ALL_MONSTER_STARS && window.ALL_MONSTER_STARS[current]) || 1;
+            opts += `<option value="${current}" selected>★${st} ${current}</option>`;
           }
           opts += filtered
-            .map(it => `<option value="${it.name}" ${it.name === current ? "selected" : ""}>${it.name}</option>`)
+            .map(m => `<option value="${m.name}" ${m.name === current ? "selected" : ""}>★${m.star} ${m.name}</option>`)
             .join("");
-          itemEl.innerHTML = opts;
+          nameEl.innerHTML = opts;
         });
       }
 
