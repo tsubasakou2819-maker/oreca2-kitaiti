@@ -2536,8 +2536,14 @@ const FUSION_RECIPES = {
       addUnit("スライム・ドラゴン", 1);
 
       // 候補を最大4種に絞って高速化（4種なら3枠の組み合わせは20通り）
-      const unitArr = Array.from(candUnits.values()).slice(0, 4);
-
+      const unitArr = Array.from(candUnits.values()).slice(0, 6);
+      ["スライム・ドラゴン", "スライム", "スライム・シルバー"].forEach(filler => {
+        if (unitArr.length < 3 || !unitArr.some(u => u.name === filler)) {
+          if (unitArr.length < 6 && !unitArr.some(u => u.name === filler)) {
+            unitArr.push({ name: filler, star: getStar(filler), lv: 1 });
+          }
+        }
+      });
       const neededItems = new Set([...changeItems]);
       for (const r of recipes) if (r.item) neededItems.add(r.item);
       for (const mat of directMats) {
@@ -2563,8 +2569,10 @@ const FUSION_RECIPES = {
 
       const partyCombos = [];
       for (let i = 0; i < unitArr.length; i++) {
-        for (let j = i; j < unitArr.length; j++) {
-          for (let k = j; k < unitArr.length; k++) {
+        for (let j = i + 1; j < unitArr.length; j++) {
+          if (unitArr[i].name === unitArr[j].name) continue;
+          for (let k = j + 1; k < unitArr.length; k++) {
+            if (unitArr[k].name === unitArr[i].name || unitArr[k].name === unitArr[j].name) continue;
             partyCombos.push([unitArr[i], unitArr[j], unitArr[k]]);
           }
         }
