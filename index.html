@@ -256,20 +256,6 @@
       return lvHtml + spHtml;
     }
 
-      const spParts = [];
-      const addSp = (label, arr, v) => {
-        if (v >= 6 || !arr) return;
-        const lv = arr[5 - v];
-        spParts.push(lv === 0 ? `${label}同値` : `${label}Lv${lv}`);
-      };
-      addSp("HP", st.split.hp, hpVal);
-      addSp("攻", st.split.at, atVal);
-      addSp("速", st.split.sp, spVal);
-      const spHtml = spParts.length > 0
-        ? `<div style="font-size:10px; color:#fbbf24; margin-top:2px;">判別: ${spParts.join(" / ")}</div>`
-        : "";
-      return lvHtml + spHtml;
-    }
     const openChapters = new Set();
     function togglePartyBox() {
       const body = document.getElementById("party-body");
