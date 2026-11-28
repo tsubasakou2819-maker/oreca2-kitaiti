@@ -98,6 +98,25 @@
     <datalist id="all-monsters-list"></datalist>
     </div>
     <div style="margin-top:8px;">
+      <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <label style="font-size: 13px;">
+          出撃する章：
+          <select id="battle-chapter">
+            <option value="AUTO">各モンスターの章（自動）</option>
+            <option value="序章">序章</option>
+            <option value="第1章">第1章</option>
+            <option value="第2章">第2章</option>
+            <option value="第3章">第3章</option>
+            <option value="第4章">第4章</option>
+            <option value="第5章">第5章</option>
+            <option value="第6章">第6章</option>
+          </select>
+        </label>
+        <label style="font-size: 13px;">
+          記録の鍵アイテム：
+          <select id="key-item"></select>
+        </label>
+      </div>
       <button type="button" onclick="applyParty()" style="background:#0284c7; color:white; border:none; padding:6px 12px; font-size:14px; cursor:pointer;">このチームで出現率を計算</button>
     </div>
     </div>
@@ -857,18 +876,18 @@
           (nameF === "" || m.name.toLowerCase().includes(nameF))
         );
 
-        ['p1', 'p2', 'p3'].forEach(prefix => {
-          const nameEl = document.getElementById(prefix + '-name');
-          const current = nameEl.value;
-          let opts = `<option value="">-- 選択 (${filtered.length}件) --</option>`;
-          if (current && !filtered.some(m => m.name === current)) {
-            const curStar = window.ALL_MONSTER_STARS[current] || "";
-            opts += `<option value="${current}" selected>★${curStar} ${current}</option>`;
+        ['p1-item', 'p2-item', 'p3-item', 'key-item'].forEach(elId => {
+          const itemEl = document.getElementById(elId);
+          if (!itemEl) return;
+          const current = itemEl.value;
+          let opts = `<option value="">-- なし (${filtered.length}件) --</option>`;
+          if (current && !filtered.some(it => it.name === current)) {
+            opts += `<option value="${current}" selected>${current}</option>`;
           }
           opts += filtered
-            .map(m => `<option value="${m.name}" ${m.name === current ? "selected" : ""}>★${m.star} ${m.name}</option>`)
+            .map(it => `<option value="${it.name}" ${it.name === current ? "selected" : ""}>${it.name}</option>`)
             .join("");
-          nameEl.innerHTML = opts;
+          itemEl.innerHTML = opts;
         });
       }
 
@@ -910,8 +929,9 @@
           (nameF === "" || it.name.toLowerCase().includes(nameF))
         );
 
-        ['p1', 'p2', 'p3'].forEach(prefix => {
-          const itemEl = document.getElementById(prefix + '-item');
+        ['p1-item', 'p2-item', 'p3-item', 'key-item'].forEach(elId => {
+          const itemEl = document.getElementById(elId);
+          if (!itemEl) return;
           const current = itemEl.value;
           let opts = `<option value="">-- なし (${filtered.length}件) --</option>`;
           if (current && !filtered.some(it => it.name === current)) {
@@ -927,8 +947,8 @@
       document.getElementById("item-filter-chap").addEventListener("change", updatePartyItemOptions);
       document.getElementById("item-filter-name").addEventListener("input", updatePartyItemOptions);
       updatePartyItemOptions();
-      ['p1', 'p2', 'p3'].forEach(prefix => {
-        document.getElementById(prefix + '-item').addEventListener("change", applyParty);
+      ['p1-item', 'p2-item', 'p3-item', 'key-item', 'battle-chapter'].forEach(elId => {
+        document.getElementById(elId)?.addEventListener("change", applyParty);
       });
 
       applyParty();
@@ -1941,7 +1961,7 @@ const FUSION_RECIPES = {
     };
 
     // モンスターごとの「1プレイあたりの最大期待合体回数（リセット連鎖込み）」を計算
-    function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet) {
+    function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems = []) {
       const recipes = FUSION_RECIPES[monsterName] || [];
       const changeItems = ILLUST_CHANGE_ITEMS[monsterName] || [];
       if (recipes.length === 0 && changeItems.length === 0) return 0;
@@ -1949,9 +1969,12 @@ const FUSION_RECIPES = {
       const initSlots = partySlots
         .map(s => ({ name: s.name, lv: Math.min(10, s.lv + 1), changed: false }))
         .filter(s => s.name);
-      const initItems = partySlots.map(s => s.item).filter(Boolean).sort();
+      const initItems = [
+        ...partySlots.map(s => s.item).filter(Boolean),
+        ...extraItems.filter(Boolean)
+      ].sort();
 
-      // このモンスターのレシピに「バトルで仲間になる敵」が含まれるか調べる
+      // このモンスターのレシピ・スライム育成に関わる「バトルで仲間になる敵」を調べる
       const relevantEnemies = new Set();
       for (const r of recipes) {
         if (r.b) {
@@ -1959,7 +1982,12 @@ const FUSION_RECIPES = {
           if (!r.lv10A && enemyRatesMap[r.a]) relevantEnemies.add(r.a);
         }
       }
-
+      // 対戦章に出現するスライム系（レベルアップによる再抽選用）も含める
+      if (initSlots.some(s => s.lv < 10) || recipes.length > 0) {
+        for (const eName of Object.keys(enemyRatesMap)) {
+          if (SLIME_LV_UP[eName]) relevantEnemies.add(eName);
+        }
+      }
       const solveWithEnemies = (initEnemies) => {
         const memo = new Map();
         let steps = 0;
@@ -2425,18 +2453,24 @@ const FUSION_RECIPES = {
       // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
       // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
       // バトルで仲間になる（can_battle = 1）モンスターの1〜3体出現確率をまとめる
+      // 出撃する章と記録の鍵アイテムを取得
+      const battleChap = document.getElementById("battle-chapter")?.value || "AUTO";
+      const keyItem = document.getElementById("key-item")?.value || "";
+      const extraItems = keyItem ? [keyItem] : [];
+
+      // バトルで仲間になる（can_battle = 1）モンスターの1〜3体出現確率をまとめる
       const enemyRatesMap = {};
       const bossNameSet = new Set();
-      const allMRes = db.exec("SELECT id, name, can_battle, p1_rate, p2_rate, p3_rate, is_boss FROM monsters");
+      const allMRes = db.exec("SELECT id, name, chapter, can_battle, p1_rate, p2_rate, p3_rate, is_boss FROM monsters");
       if (allMRes[0]) {
-        for (const [id, name, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
+        for (const [id, name, chap, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
           if (isBoss) bossNameSet.add(name);
-          if (canBattle && ((p1 || 0) + (p2 || 0) + (p3 || 0)) > 0) {
+          if (canBattle && (battleChap === "AUTO" || chap === battleChap) && ((p1 || 0) + (p2 || 0) + (p3 || 0)) > 0) {
             enemyRatesMap[name] = { p1: p1 || 0, p2: p2 || 0, p3: p3 || 0 };
           }
         }
-        for (const [id, name, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
-          const rolls = calcOptimalFusionRolls(name, !!isBoss, partySlots, enemyRatesMap, bossNameSet);
+        for (const [id, name, chap, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
+          const rolls = calcOptimalFusionRolls(name, !!isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems);
           db.run("UPDATE monsters SET fusion_rolls = ? WHERE id = ?", [rolls, id]);
         }
       }
