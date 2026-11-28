@@ -1947,7 +1947,7 @@ const FUSION_RECIPES = {
       if (recipes.length === 0 && changeItems.length === 0) return 0;
 
       const initSlots = partySlots
-        .map(s => ({ name: s.name, lv: s.lv, changed: false }))
+        .map(s => ({ name: s.name, lv: Math.min(10, s.lv + 1), changed: false }))
         .filter(s => s.name);
       const initItems = partySlots.map(s => s.item).filter(Boolean).sort();
 
@@ -1965,7 +1965,7 @@ const FUSION_RECIPES = {
         let steps = 0;
 
         const makeKey = (slots, items, enemies) => {
-          const sKey = slots.map(s => `${s.name}@${s.lv >= 9 ? 10 : 1}${s.changed ? "c" : ""}`).sort().join(",");
+          const sKey = slots.map(s => `${s.name}@${s.lv}${s.changed ? "c" : ""}`).sort().join(",");
           const iKey = items.join(",");
           const eKey = Object.entries(enemies).filter(([, c]) => c > 0).sort().map(([n, c]) => `${n}:${c}`).join(",");
           return `${sKey}|${iKey}|${eKey}`;
@@ -1977,7 +1977,7 @@ const FUSION_RECIPES = {
           // 1. イラストチェンジ
           if (changeItems.length > 0) {
             for (const s of slots) {
-              if (s.name === monsterName && !s.changed && (isBoss || s.lv >= 9)) {
+              if (s.name === monsterName && !s.changed && (isBoss || s.lv >= 10)) {
                 for (const it of items) {
                   if (changeItems.includes(it)) total += 1;
                 }
@@ -1992,24 +1992,24 @@ const FUSION_RECIPES = {
 
             if (!r.b) {
               for (const s of slots) {
-                if (s.name === r.a && (!r.lv10A || s.lv >= 9)) total += itemMult;
+                if (s.name === r.a && (!r.lv10A || s.lv >= 10)) total += itemMult;
               }
             } else {
               // 手持ち同士
               for (let i = 0; i < slots.length; i++) {
                 for (let j = i + 1; j < slots.length; j++) {
                   const s1 = slots[i], s2 = slots[j];
-                  const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 9) && s2.name === r.b && (!r.lv10B || s2.lv >= 9);
-                  const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 9) && s2.name === r.a && (!r.lv10A || s2.lv >= 9);
+                  const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 10) && s2.name === r.b && (!r.lv10B || s2.lv >= 10);
+                  const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 10) && s2.name === r.a && (!r.lv10A || s2.lv >= 10);
                   if (m1 || m2) total += itemMult;
                 }
               }
               // 手持ち1体 ＋ 敵モンスター（出現した個体数ぶん別抽選！）
               for (const s of slots) {
-                if (s.name === r.a && (!r.lv10A || s.lv >= 9) && !r.lv10B && (enemies[r.b] || 0) > 0) {
+                if (s.name === r.a && (!r.lv10A || s.lv >= 10) && !r.lv10B && (enemies[r.b] || 0) > 0) {
                   total += enemies[r.b] * itemMult;
                 }
-                if (s.name === r.b && (!r.lv10B || s.lv >= 9) && !r.lv10A && (enemies[r.a] || 0) > 0) {
+                if (s.name === r.b && (!r.lv10B || s.lv >= 10) && !r.lv10A && (enemies[r.a] || 0) > 0) {
                   total += enemies[r.a] * itemMult;
                 }
               }
@@ -2048,7 +2048,7 @@ const FUSION_RECIPES = {
           // 遷移B: イラストチェンジ（BOSS または Lv9以上 ＋ 専用アイテム）
           for (let i = 0; i < slots.length; i++) {
             const s = slots[i];
-            if (s.changed || !(bossNameSet.has(s.name) || s.lv >= 9)) continue;
+            if (s.changed || !(bossNameSet.has(s.name) || s.lv >= 10)) continue;
             const cItems = ILLUST_CHANGE_ITEMS[s.name];
             if (!cItems) continue;
             for (const req of cItems) {
@@ -2072,7 +2072,7 @@ const FUSION_RECIPES = {
               if (!r.b) {
                 for (let i = 0; i < slots.length; i++) {
                   const s = slots[i];
-                  if (s.name === r.a && (!r.lv10A || s.lv >= 9)) {
+                  if (s.name === r.a && (!r.lv10A || s.lv >= 10)) {
                     const nSlots = slots.filter((_, k) => k !== i);
                     nSlots.push({ name: tName, lv: 1, changed: false });
                     tryNext(nSlots, nItems, enemies);
@@ -2083,8 +2083,8 @@ const FUSION_RECIPES = {
                 for (let i = 0; i < slots.length; i++) {
                   for (let j = i + 1; j < slots.length; j++) {
                     const s1 = slots[i], s2 = slots[j];
-                    const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 9) && s2.name === r.b && (!r.lv10B || s2.lv >= 9);
-                    const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 9) && s2.name === r.a && (!r.lv10A || s2.lv >= 9);
+                    const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 10) && s2.name === r.b && (!r.lv10B || s2.lv >= 10);
+                    const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 10) && s2.name === r.a && (!r.lv10A || s2.lv >= 10);
                     if (m1 || m2) {
                       const nSlots = slots.filter((_, k) => k !== i && k !== j);
                       nSlots.push({ name: tName, lv: 1, changed: false });
@@ -2095,12 +2095,12 @@ const FUSION_RECIPES = {
                 // 手持ち1体 ＋ 敵モンスター1体（敵を1体消費）
                 for (let i = 0; i < slots.length; i++) {
                   const s = slots[i];
-                  if (s.name === r.a && (!r.lv10A || s.lv >= 9) && !r.lv10B && (enemies[r.b] || 0) > 0) {
+                  if (s.name === r.a && (!r.lv10A || s.lv >= 10) && !r.lv10B && (enemies[r.b] || 0) > 0) {
                     const nSlots = slots.filter((_, k) => k !== i);
                     nSlots.push({ name: tName, lv: 1, changed: false });
                     tryNext(nSlots, nItems, { ...enemies, [r.b]: enemies[r.b] - 1 });
                   }
-                  if (s.name === r.b && (!r.lv10B || s.lv >= 9) && !r.lv10A && (enemies[r.a] || 0) > 0) {
+                  if (s.name === r.b && (!r.lv10B || s.lv >= 10) && !r.lv10A && (enemies[r.a] || 0) > 0) {
                     const nSlots = slots.filter((_, k) => k !== i);
                     nSlots.push({ name: tName, lv: 1, changed: false });
                     tryNext(nSlots, nItems, { ...enemies, [r.a]: enemies[r.a] - 1 });
