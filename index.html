@@ -1925,87 +1925,196 @@ const FUSION_RECIPES = {
       return states;
     }
 
-    // モンスターごとの「1プレイあたりの期待合体回数」を計算
-    function calcMonsterFusionRolls(monsterName, isBoss, states, battleProbMap) {
-      const uniqueActions = new Map();
-      const addAction = (key, prob) => {
-        if (prob <= 0) return;
-        uniqueActions.set(key, Math.max(uniqueActions.get(key) || 0, prob));
-      };
-
-      // A. BOSS / Lv10(Lv9→バトル後Lv10含む) + 専用アイテム のイラストチェンジ（抽選リセット）
+    // モンスターごとの「1プレイあたりの最大期待合体回数（リセット連鎖込み）」を計算
+    function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet) {
+      const recipes = FUSION_RECIPES[monsterName] || [];
       const changeItems = ILLUST_CHANGE_ITEMS[monsterName] || [];
-      if (changeItems.length > 0) {
-        states.forEach((st) => {
-          st.slots.forEach((slot) => {
-            if (slot.name === monsterName && (isBoss || slot.lv >= 9)) {
-              st.items.forEach((it) => {
-                if (changeItems.includes(it.name)) {
-                  addAction(`illust_${slot.origin}_${it.origin}`, 1.0);
-                }
-              });
-            }
-          });
-        });
+      if (recipes.length === 0 && changeItems.length === 0) return 0;
+
+      const initSlots = partySlots
+        .map(s => ({ name: s.name, lv: s.lv, changed: false }))
+        .filter(s => s.name);
+      const initItems = partySlots.map(s => s.item).filter(Boolean).sort();
+
+      // このモンスターのレシピに「バトルで仲間になる敵」が含まれるか調べる
+      const relevantEnemies = new Set();
+      for (const r of recipes) {
+        if (r.b) {
+          if (!r.lv10B && enemyRatesMap[r.b]) relevantEnemies.add(r.b);
+          if (!r.lv10A && enemyRatesMap[r.a]) relevantEnemies.add(r.a);
+        }
       }
 
-      // B. 合体・進化レシピ（連鎖で作った新モンスター＆別スロットアイテムも含む）
-      const recipes = FUSION_RECIPES[monsterName] || [];
-      for (const r of recipes) {
-        const reqItem = r.item || null;
+      const solveWithEnemies = (initEnemies) => {
+        const memo = new Map();
+        let steps = 0;
 
-        states.forEach((st) => {
-          const matchedItems = reqItem
-            ? st.items.filter(it => it.name === reqItem)
-            : [null];
+        const makeKey = (slots, items, enemies) => {
+          const sKey = slots.map(s => `${s.name}@${s.lv >= 9 ? 10 : 1}${s.changed ? "c" : ""}`).sort().join(",");
+          const iKey = items.join(",");
+          const eKey = Object.entries(enemies).filter(([, c]) => c > 0).sort().map(([n, c]) => `${n}:${c}`).join(",");
+          return `${sKey}|${iKey}|${eKey}`;
+        };
 
-          for (const usedItem of matchedItems) {
-            const itemKey = usedItem ? usedItem.origin : "";
+        // 現在の状態(リセットなし)で targetName の抽選を何通り確認できるか
+        const countPeeks = (slots, items, enemies) => {
+          let total = 0;
+          // 1. イラストチェンジ
+          if (changeItems.length > 0) {
+            for (const s of slots) {
+              if (s.name === monsterName && !s.changed && (isBoss || s.lv >= 9)) {
+                for (const it of items) {
+                  if (changeItems.includes(it)) total += 1;
+                }
+              }
+            }
+          }
+          // 2. 合体・進化レシピ
+          for (const r of recipes) {
+            const reqItem = r.item || null;
+            const itemMult = reqItem ? items.filter(it => it === reqItem).length : 1;
+            if (itemMult === 0) continue;
 
             if (!r.b) {
-              st.slots.forEach((slot) => {
-                if (slot.name === r.a && (!r.lv10A || slot.lv >= 9)) {
-                  addAction(`evo_${slot.origin}_${itemKey}`, 1.0);
-                }
-              });
-              continue;
-            }
-
-            // 手持ち同士
-            for (let i = 0; i < st.slots.length; i++) {
-              for (let j = i + 1; j < st.slots.length; j++) {
-                const s1 = st.slots[i], s2 = st.slots[j];
-                const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 9) && s2.name === r.b && (!r.lv10B || s2.lv >= 9);
-                const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 9) && s2.name === r.a && (!r.lv10A || s2.lv >= 9);
-                if (m1 || m2) {
-                  const pairOrg = [s1.origin, s2.origin].sort().join("+");
-                  addAction(`pair_${pairOrg}_${itemKey}`, 1.0);
+              for (const s of slots) {
+                if (s.name === r.a && (!r.lv10A || s.lv >= 9)) total += itemMult;
+              }
+            } else {
+              // 手持ち同士
+              for (let i = 0; i < slots.length; i++) {
+                for (let j = i + 1; j < slots.length; j++) {
+                  const s1 = slots[i], s2 = slots[j];
+                  const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 9) && s2.name === r.b && (!r.lv10B || s2.lv >= 9);
+                  const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 9) && s2.name === r.a && (!r.lv10A || s2.lv >= 9);
+                  if (m1 || m2) total += itemMult;
                 }
               }
+              // 手持ち1体 ＋ 敵モンスター（出現した個体数ぶん別抽選！）
+              for (const s of slots) {
+                if (s.name === r.a && (!r.lv10A || s.lv >= 9) && !r.lv10B && (enemies[r.b] || 0) > 0) {
+                  total += enemies[r.b] * itemMult;
+                }
+                if (s.name === r.b && (!r.lv10B || s.lv >= 9) && !r.lv10A && (enemies[r.a] || 0) > 0) {
+                  total += enemies[r.a] * itemMult;
+                }
+              }
             }
-
-            // 手持ち1体 ＋ バトルで仲間になる敵1体
-            st.slots.forEach((slot) => {
-              if (slot.name === r.a && (!r.lv10A || slot.lv >= 9) && !r.lv10B) {
-                const pB = battleProbMap[r.b] || 0;
-                if (pB > 0) addAction(`battle_${slot.origin}+${r.b}_${itemKey}`, pB);
-              }
-              if (slot.name === r.b && (!r.lv10B || slot.lv >= 9) && !r.lv10A) {
-                const pA = battleProbMap[r.a] || 0;
-                if (pA > 0) addAction(`battle_${slot.origin}+${r.a}_${itemKey}`, pA);
-              }
-            });
           }
-        });
-      }
+          return total;
+        };
 
-      let totalRolls = 0;
-      for (const p of uniqueActions.values()) totalRolls += p;
-      if (monsterName === "死霊使いワイト") {
-    console.log("ワイト内訳:", Array.from(uniqueActions.entries()));
-  }
-  return totalRolls;
-      return totalRolls;
+        const dfs = (slots, items, enemies) => {
+          const key = makeKey(slots, items, enemies);
+          if (memo.has(key)) return memo.get(key);
+          const curPeeks = countPeeks(slots, items, enemies);
+          if (++steps > 350) return curPeeks;
+
+          let bestNext = 0;
+          const tryNext = (nSlots, nItems, nEnemies) => {
+            const val = dfs(nSlots, nItems, nEnemies);
+            if (val > bestNext) bestNext = val;
+          };
+
+          // 遷移A: アイテム同士の合体
+          for (let i = 0; i < items.length; i++) {
+            for (let j = i + 1; j < items.length; j++) {
+              if (i > 0 && items[i] === items[i - 1]) continue;
+              for (const f of ITEM_FUSIONS) {
+                if ((items[i] === f.a && items[j] === f.b) || (items[i] === f.b && items[j] === f.a)) {
+                  const nItems = items.filter((_, idx) => idx !== i && idx !== j);
+                  nItems.push(f.result);
+                  nItems.sort();
+                  tryNext(slots, nItems, enemies);
+                }
+              }
+            }
+          }
+
+          // 遷移B: イラストチェンジ（BOSS または Lv9以上 ＋ 専用アイテム）
+          for (let i = 0; i < slots.length; i++) {
+            const s = slots[i];
+            if (s.changed || !(bossNameSet.has(s.name) || s.lv >= 9)) continue;
+            const cItems = ILLUST_CHANGE_ITEMS[s.name];
+            if (!cItems) continue;
+            for (const req of cItems) {
+              const idx = items.indexOf(req);
+              if (idx !== -1) {
+                const nSlots = slots.map((x, k) => k === i ? { ...x, changed: true } : x);
+                const nItems = items.filter((_, k) => k !== idx);
+                tryNext(nSlots, nItems, enemies);
+              }
+            }
+          }
+
+          // 遷移C: モンスター進化・合体（実行して素材消費 → 全抽選リセット）
+          for (const [tName, tRecipes] of Object.entries(FUSION_RECIPES)) {
+            for (const r of tRecipes) {
+              const reqItem = r.item || null;
+              const itemIdx = reqItem ? items.indexOf(reqItem) : -1;
+              if (reqItem && itemIdx === -1) continue;
+              const nItems = reqItem ? items.filter((_, k) => k !== itemIdx) : items;
+
+              if (!r.b) {
+                for (let i = 0; i < slots.length; i++) {
+                  const s = slots[i];
+                  if (s.name === r.a && (!r.lv10A || s.lv >= 9)) {
+                    const nSlots = slots.filter((_, k) => k !== i);
+                    nSlots.push({ name: tName, lv: 1, changed: false });
+                    tryNext(nSlots, nItems, enemies);
+                  }
+                }
+              } else {
+                // 手持ち同士
+                for (let i = 0; i < slots.length; i++) {
+                  for (let j = i + 1; j < slots.length; j++) {
+                    const s1 = slots[i], s2 = slots[j];
+                    const m1 = s1.name === r.a && (!r.lv10A || s1.lv >= 9) && s2.name === r.b && (!r.lv10B || s2.lv >= 9);
+                    const m2 = s1.name === r.b && (!r.lv10B || s1.lv >= 9) && s2.name === r.a && (!r.lv10A || s2.lv >= 9);
+                    if (m1 || m2) {
+                      const nSlots = slots.filter((_, k) => k !== i && k !== j);
+                      nSlots.push({ name: tName, lv: 1, changed: false });
+                      tryNext(nSlots, nItems, enemies);
+                    }
+                  }
+                }
+                // 手持ち1体 ＋ 敵モンスター1体（敵を1体消費）
+                for (let i = 0; i < slots.length; i++) {
+                  const s = slots[i];
+                  if (s.name === r.a && (!r.lv10A || s.lv >= 9) && !r.lv10B && (enemies[r.b] || 0) > 0) {
+                    const nSlots = slots.filter((_, k) => k !== i);
+                    nSlots.push({ name: tName, lv: 1, changed: false });
+                    tryNext(nSlots, nItems, { ...enemies, [r.b]: enemies[r.b] - 1 });
+                  }
+                  if (s.name === r.b && (!r.lv10B || s.lv >= 9) && !r.lv10A && (enemies[r.a] || 0) > 0) {
+                    const nSlots = slots.filter((_, k) => k !== i);
+                    nSlots.push({ name: tName, lv: 1, changed: false });
+                    tryNext(nSlots, nItems, { ...enemies, [r.a]: enemies[r.a] - 1 });
+                  }
+                }
+              }
+            }
+          }
+
+          const res = curPeeks + bestNext;
+          memo.set(key, res);
+          return res;
+        };
+
+        return dfs(initSlots, initItems, initEnemies);
+      };
+
+      const base = solveWithEnemies({});
+      if (relevantEnemies.size === 0) return base;
+
+      let total = base;
+      for (const eName of relevantEnemies) {
+        const { p1, p2, p3 } = enemyRatesMap[eName];
+        const gain1 = p1 > 0 ? (solveWithEnemies({ [eName]: 1 }) - base) : 0;
+        const gain2 = p2 > 0 ? (solveWithEnemies({ [eName]: 2 }) - base) : 0;
+        const gain3 = p3 > 0 ? (solveWithEnemies({ [eName]: 3 }) - base) : 0;
+        total += p1 * gain1 + p2 * gain2 + p3 * gain3;
+      }
+      return total;
     }
     function applyParty() {
       const names = [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
@@ -2263,17 +2372,19 @@ const FUSION_RECIPES = {
       // バトルで各モンスターが1体でも出現する確率を計算
       // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
       // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
-      const battleProbMap = {};
-      const fusionStates = getFusionStates(partySlots);
+      // バトルで仲間になる（can_battle = 1）モンスターの1〜3体出現確率をまとめる
+      const enemyRatesMap = {};
+      const bossNameSet = new Set();
       const allMRes = db.exec("SELECT id, name, can_battle, p1_rate, p2_rate, p3_rate, is_boss FROM monsters");
       if (allMRes[0]) {
-        for (const [id, name, canBattle, p1, p2, p3] of allMRes[0].values) {
-          if (canBattle) {
-            battleProbMap[name] = Math.max(battleProbMap[name] || 0, Math.min(1, (p1 || 0) + (p2 || 0) + (p3 || 0)));
+        for (const [id, name, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
+          if (isBoss) bossNameSet.add(name);
+          if (canBattle && ((p1 || 0) + (p2 || 0) + (p3 || 0)) > 0) {
+            enemyRatesMap[name] = { p1: p1 || 0, p2: p2 || 0, p3: p3 || 0 };
           }
         }
         for (const [id, name, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
-          const rolls = calcMonsterFusionRolls(name, !!isBoss, fusionStates, battleProbMap);
+          const rolls = calcOptimalFusionRolls(name, !!isBoss, partySlots, enemyRatesMap, bossNameSet);
           db.run("UPDATE monsters SET fusion_rolls = ? WHERE id = ?", [rolls, id]);
         }
       }
