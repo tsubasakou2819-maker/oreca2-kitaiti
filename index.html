@@ -2180,6 +2180,10 @@ const FUSION_RECIPES = {
         const gain3 = p3 > 0 ? (solveWithEnemies({ [eName]: 3 }) - base) : 0;
         total += p1 * gain1 + p2 * gain2 + p3 * gain3;
       }
+      if (monsterName === "ゴールドドラゴン") {
+    console.log("金竜:", JSON.stringify({ initSlots, initItems, slime: enemyRatesMap["スライム"], base, total }));
+  }
+  return total;
       return total;
     }
     function applyParty() {
