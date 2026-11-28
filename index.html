@@ -208,20 +208,8 @@
       "邪神ソジュ": { hp:{1:[280,283,287,290,293,296]}, at:{1:[63,64,65,65,66,67]}, sp:{1:[50,51,52,52,53,53]}, split:{hp:[1,1,1,1,1],at:[1,1,2,1,1],sp:[1,1,0,1,10]} }
     };
 
-    function formatSplitLabel(statObj, rank, splitVal) {
-  if (splitVal !== '同値') return `Lv${splitVal}で分岐`;
-  const rKey = rank === 'E+' ? 'E' : rank;
-  if (statObj.same && statObj.same[rKey]) {
-    const s = statObj.same[rKey];
-    return s.length === 4 ? '全ランク同値' : `${s.join('・')}と同値`;
-  }
-  const ranks = ['A', 'B', 'C', 'D', 'E'];
-  const target = JSON.stringify(statObj[rKey]);
-  const sameRanks = ranks.filter(r => r !== rKey && statObj[r] !== undefined && JSON.stringify(statObj[r]) === target);
-  if (sameRanks.length === ranks.length - 1) return '全ランク同値';
-  if (sameRanks.length > 0) return `${sameRanks.join('・')}と同値`;
-  return '同値';
-}
+    
+
     function getStatText(name, method, hpVal, atVal, spVal) {
       const st = MONSTER_STATS[name];
       if (!st) return "";
@@ -235,6 +223,38 @@
         .filter(lv => st.hp[lv])
         .map(lv => `<div style="font-size:11px; color:#38bdf8; margin-top:2px;">Lv${lv}: HP ${fmt(st.hp[lv], hpVal)} / 攻 ${fmt(st.at[lv], atVal)} / 速 ${fmt(st.sp[lv], spVal)}</div>`)
         .join("");
+
+      const RANKS = ["F", "E", "D", "C", "B", "A"];
+      const spParts = [];
+      const addSp = (label, arr, v) => {
+        if (v >= 6 || !arr) return;
+        const lv = arr[5 - v];
+        if (lv !== 0) {
+          spParts.push(`${label}Lv${lv}`);
+          return;
+        }
+        const rIdx = 6 - v;
+        let lo = rIdx, hi = rIdx;
+        while (lo > 0 && arr[lo - 1] === 0) lo--;
+        while (hi < 5 && arr[hi] === 0) hi++;
+        if (lo === 0 && hi === 5) {
+          spParts.push(`${label}全ランク同値`);
+        } else {
+          const same = [];
+          for (let i = hi; i >= lo; i--) {
+            if (i !== rIdx) same.push(RANKS[i]);
+          }
+          spParts.push(`${label}${same.join("・")}と同値`);
+        }
+      };
+      addSp("HP", st.split.hp, hpVal);
+      addSp("攻", st.split.at, atVal);
+      addSp("速", st.split.sp, spVal);
+      const spHtml = spParts.length > 0
+        ? `<div style="font-size:10px; color:#fbbf24; margin-top:2px;">判別: ${spParts.join(" / ")}</div>`
+        : "";
+      return lvHtml + spHtml;
+    }
 
       const spParts = [];
       const addSp = (label, arr, v) => {
