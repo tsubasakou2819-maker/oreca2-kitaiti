@@ -171,6 +171,7 @@
     </label>
   </div>
 
+  <div id="best-party-result" style="display:none; margin: 10px 0; padding: 12px; background: #0f172a; border: 1px solid #38bdf8; border-radius: 8px; font-size: 13px; line-height: 1.6;"></div>
   <div id="summary" style="margin-top: 12px; font-weight: bold; color: #fbbf24;"></div>
   <div id="output">読み込み中...</div>
 
@@ -1764,6 +1765,10 @@ const FUSION_RECIPES = {
                 <button class="star-btn" style="color: ${starColor};" onclick="toggleMark(${id}, ${marked})">${star}</button>${name}${isBoss ? ' <small style="background:#dc2626;color:#fff;padding:1px 4px;border-radius:4px;font-size:10px;">BOSS</small>' : ''}<br>
                 <small style="color: #94a3b8;">
                   ${c} / ${methodHtml}
+                  <small style="color: #94a3b8;">
+                  ${c} / ${methodHtml}
+                  ${canFusion ? ` <button type="button" onclick="findBestParty('${name.replace(/'/g, "\\'")}', ${isBoss})" style="margin-left:4px; padding:1px 6px; font-size:11px; background:#0284c7; color:#fff; border:none; border-radius:4px; cursor:pointer;">最強編成</button>` : ""}
+                </small>
                 </small>
               </td>
               <td>
@@ -1963,7 +1968,7 @@ const FUSION_RECIPES = {
     };
 
     // モンスターごとの「1プレイあたりの最大期待合体回数（リセット連鎖込み）」を計算
-    function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems = []) {
+    function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems = [], returnDetail = false) {
       const recipes = FUSION_RECIPES[monsterName] || [];
       const changeItems = ILLUST_CHANGE_ITEMS[monsterName] || [];
       if (recipes.length === 0 && changeItems.length === 0) return 0;
@@ -2172,26 +2177,43 @@ const FUSION_RECIPES = {
       };
 
       const base = solveWithEnemies({});
-      if (relevantEnemies.size === 0) return base;
+      if (relevantEnemies.size === 0) {
+        return returnDetail ? { min: base, avg: base, max: base } : base;
+      }
 
       let total = base;
+      let maxRolls = base;
+      const enemyVals = {};
       for (const eName of relevantEnemies) {
         const { p1, p2, p3 } = enemyRatesMap[eName];
-        const gain1 = p1 > 0 ? (solveWithEnemies({ [eName]: 1 }) - base) : 0;
-        const gain2 = p2 > 0 ? (solveWithEnemies({ [eName]: 2 }) - base) : 0;
-        const gain3 = p3 > 0 ? (solveWithEnemies({ [eName]: 3 }) - base) : 0;
-        total += p1 * gain1 + p2 * gain2 + p3 * gain3;
+        const r1 = p1 > 0 ? solveWithEnemies({ [eName]: 1 }) : base;
+        const r2 = p2 > 0 ? solveWithEnemies({ [eName]: 2 }) : base;
+        const r3 = p3 > 0 ? solveWithEnemies({ [eName]: 3 }) : base;
+        enemyVals[eName] = { p1, p2, p3, r1, r2, r3 };
+        if (p1 > 0 && r1 > maxRolls) maxRolls = r1;
+        if (p2 > 0 && r2 > maxRolls) maxRolls = r2;
+        if (p3 > 0 && r3 > maxRolls) maxRolls = r3;
+        total += p1 * (r1 - base) + p2 * (r2 - base) + p3 * (r3 - base);
       }
-      if (monsterName === "ゴールドドラゴン") {
-    console.log("金竜:", JSON.stringify({ initSlots, initItems, slime: enemyRatesMap["スライム"], base, total }));
-  }
-  return total;
-      return total;
+
+      let minRolls = base;
+      if (relevantEnemies.size === 1) {
+        const [eName] = [...relevantEnemies];
+        const { p1, p2, p3, r1, r2, r3 } = enemyVals[eName];
+        if (p1 + p2 + p3 >= 0.9999) {
+          minRolls = Math.min(
+            p1 > 0 ? r1 : Infinity,
+            p2 > 0 ? r2 : Infinity,
+            p3 > 0 ? r3 : Infinity
+          );
+        }
+      }
+      return returnDetail ? { min: minRolls, avg: total, max: maxRolls } : total;
     }
-    function applyParty() {
-      const names = [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
-      const stars = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-star`).value) || 0);
-      const lvs = [1, 2, 3].map(i => Number(document.getElementById(`p${i}-lv`).value) || 0);
+    function applyParty(override = null) {
+      const names = override ? override.names : [1, 2, 3].map(i => document.getElementById(`p${i}-name`).value.trim());
+      const stars = override ? override.stars : [1, 2, 3].map(i => Number(document.getElementById(`p${i}-star`).value) || 0);
+      const lvs = override ? override.lvs : [1, 2, 3].map(i => Number(document.getElementById(`p${i}-lv`).value) || 0);
 
       const usedNames = names.filter(n => n !== "");
       const emptySlots = 3 - usedNames.length;
@@ -2447,22 +2469,18 @@ const FUSION_RECIPES = {
         `クラス合計: ${baseStar} (${baseBracket}) / 合計Lv: ${baseLv}` +
         (allLv10 ? " 【全員Lv10：ボス確定枠あり】" : "") +
         (assistSummary.length > 0 ? ` / お助け: ${assistSummary.join(" / ")}` : "");
-      // パーティ3枠の情報を取得
-      const partySlots = [1, 2, 3].map(n => ({
+      
+      // 出撃する章と記録の鍵アイテムを取得
+      const battleChap = override ? override.battleChap : (document.getElementById("battle-chapter")?.value || "AUTO");
+      const keyItem = override ? override.keyItem : (document.getElementById("key-item")?.value || "");
+      const extraItems = keyItem ? [keyItem] : [];
+
+      const partySlots = override ? override.slots : [1, 2, 3].map(n => ({
         name: document.getElementById(`p${n}-name`).value,
         star: Number(document.getElementById(`p${n}-star`).value) || 0,
         lv: Number(document.getElementById(`p${n}-lv`).value) || 1,
         item: document.getElementById(`p${n}-item`).value || ""
       }));
-
-      // バトルで各モンスターが1体でも出現する確率を計算
-      // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
-      // バトルで仲間になる（can_battle = 1）モンスターの出現確率を計算
-      // バトルで仲間になる（can_battle = 1）モンスターの1〜3体出現確率をまとめる
-      // 出撃する章と記録の鍵アイテムを取得
-      const battleChap = document.getElementById("battle-chapter")?.value || "AUTO";
-      const keyItem = document.getElementById("key-item")?.value || "";
-      const extraItems = keyItem ? [keyItem] : [];
 
       // バトルで仲間になる（can_battle = 1）モンスターの1〜3体出現確率をまとめる
       const enemyRatesMap = {};
@@ -2475,12 +2493,171 @@ const FUSION_RECIPES = {
             enemyRatesMap[name] = { p1: p1 || 0, p2: p2 || 0, p3: p3 || 0 };
           }
         }
-        for (const [id, name, chap, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
-          const rolls = calcOptimalFusionRolls(name, !!isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems);
-          db.run("UPDATE monsters SET fusion_rolls = ? WHERE id = ?", [rolls, id]);
+        if (!override) {
+          for (const [id, name, chap, canBattle, p1, p2, p3, isBoss] of allMRes[0].values) {
+            const rolls = calcOptimalFusionRolls(name, !!isBoss, partySlots, enemyRatesMap, bossNameSet, extraItems);
+            db.run("UPDATE monsters SET fusion_rolls = ? WHERE id = ?", [rolls, id]);
+          }
         }
       }
-      render();
+      if (!override) render();
+      return { enemyRatesMap, bossNameSet };
+    }
+
+    // 指定モンスターの「平均合体回数が最大になる編成＆出撃章」を自動探索してセット
+    function findBestParty(targetName, isBoss) {
+      const recipes = FUSION_RECIPES[targetName] || [];
+      const changeItems = ILLUST_CHANGE_ITEMS[targetName] || [];
+      if (recipes.length === 0 && changeItems.length === 0) return;
+
+      const getStar = (n) => (window.ALL_MONSTER_STARS && window.ALL_MONSTER_STARS[n]) || 1;
+      const chapList = ["序章", "第1章", "第2章", "第3章", "第4章", "第5章", "第6章"];
+
+      // 候補モンスターを収集（直接素材・1つ前の進化元・対象自身・スライム・ドラゴン）
+      const candUnits = new Map();
+      const addUnit = (name, lv) => {
+        if (!name || !window.ALL_MONSTER_STARS?.[name]) return;
+        const key = `${name}@${lv}`;
+        if (!candUnits.has(key)) candUnits.set(key, { name, star: getStar(name), lv });
+      };
+
+      const directMats = new Set();
+      for (const r of recipes) {
+        addUnit(r.a, r.lv10A ? 9 : 1);
+        directMats.add(r.a);
+        if (r.b) { addUnit(r.b, r.lv10B ? 9 : 1); directMats.add(r.b); }
+      }
+      // 1段階前の進化元も候補に入れる（例：シブイチ(Lv9)→シロガネ）
+      for (const mat of directMats) {
+        for (const pre of (FUSION_RECIPES[mat] || [])) {
+          addUnit(pre.a, pre.lv10A ? 9 : 1);
+          if (pre.b) addUnit(pre.b, pre.lv10B ? 9 : 1);
+        }
+      }
+      if (changeItems.length > 0) addUnit(targetName, isBoss ? 1 : 9);
+      addUnit("スライム・ドラゴン", 1);
+
+      const unitArr = Array.from(candUnits.values()).slice(0, 6);
+
+      // 候補アイテムを収集（レシピ必要アイテム・イラチェン・アイテム合体元）
+      const neededItems = new Set([...changeItems]);
+      for (const r of recipes) if (r.item) neededItems.add(r.item);
+      for (const mat of directMats) {
+        for (const cIt of (ILLUST_CHANGE_ITEMS[mat] || [])) neededItems.add(cIt);
+        for (const pre of (FUSION_RECIPES[mat] || [])) if (pre.item) neededItems.add(pre.item);
+      }
+
+      const itemCombos = [];
+      const itemList = Array.from(neededItems);
+      if (itemList.length === 0) {
+        itemCombos.push(["", "", "", ""]);
+      } else {
+        // 主要アイテム4積み & 上位2種ミックス & アイテム合体ペア
+        itemList.slice(0, 3).forEach(it => itemCombos.push([it, it, it, it]));
+        if (itemList.length >= 2) {
+          itemCombos.push([itemList[0], itemList[0], itemList[1], itemList[1]]);
+        }
+        for (const f of ITEM_FUSIONS) {
+          if (neededItems.has(f.result)) {
+            itemCombos.push([f.a, f.b, f.result, f.result]);
+          }
+        }
+      }
+
+      // 3枠のモンスター組み合わせを生成（重複あり）
+      const partyCombos = [];
+      for (let i = 0; i < unitArr.length; i++) {
+        for (let j = i; j < unitArr.length; j++) {
+          for (let k = j; k < unitArr.length; k++) {
+            partyCombos.push([unitArr[i], unitArr[j], unitArr[k]]);
+          }
+        }
+      }
+
+      let best = null;
+      const bossNameSet = new Set();
+      const bRes = db.exec("SELECT name FROM monsters WHERE is_boss = 1");
+      if (bRes[0]) bRes[0].values.forEach(([n]) => bossNameSet.add(n));
+
+      const battleCache = new Map();
+      for (const pCombo of partyCombos) {
+        const names = pCombo.map(u => u.name);
+        const stars = pCombo.map(u => u.star);
+        const lvs = pCombo.map(u => u.lv);
+        const bKey = `${names.join(",")}|${stars.join(",")}|${lvs.join(",")}`;
+
+        // 各章の敵出現率を1回だけ取得
+        if (!battleCache.has(bKey)) {
+          const chapMaps = {};
+          for (const ch of chapList) {
+            chapMaps[ch] = applyParty({
+              names, stars, lvs, battleChap: ch, keyItem: "",
+              slots: pCombo.map(u => ({ ...u, item: "" }))
+            }).enemyRatesMap;
+          }
+          battleCache.set(bKey, chapMaps);
+        }
+        const chapMaps = battleCache.get(bKey);
+
+        for (const itCombo of itemCombos) {
+          const slots = pCombo.map((u, idx) => ({ ...u, item: itCombo[idx] }));
+          const extraItems = itCombo[3] ? [itCombo[3]] : [];
+
+          for (const ch of chapList) {
+            const stat = calcOptimalFusionRolls(targetName, !!isBoss, slots, chapMaps[ch], bossNameSet, extraItems, true);
+            if (
+              !best ||
+              stat.avg > best.stat.avg + 1e-6 ||
+              (Math.abs(stat.avg - best.stat.avg) <= 1e-6 && stat.max > best.stat.max)
+            ) {
+              best = { pCombo, itCombo, chap: ch, stat };
+            }
+          }
+        }
+      }
+
+      if (!best || best.stat.avg <= 0) {
+        const box = document.getElementById("best-party-result");
+        box.style.display = "block";
+        box.innerHTML = `<strong>${targetName}</strong> の合体できる編成が見つかりませんでした。`;
+        return;
+      }
+
+      // 画面のパーティ欄・記録の鍵・出撃章に自動反映
+      [1, 2, 3].forEach((n, idx) => {
+        const u = best.pCombo[idx];
+        const it = best.itCombo[idx];
+        const nameEl = document.getElementById(`p${n}-name`);
+        if (![...nameEl.options].some(o => o.value === u.name)) {
+          nameEl.add(new Option(`★${u.star} ${u.name}`, u.name));
+        }
+        nameEl.value = u.name;
+        document.getElementById(`p${n}-star`).value = u.star;
+        document.getElementById(`p${n}-lv`).value = u.lv;
+
+        const itemEl = document.getElementById(`p${n}-item`);
+        if (it && ![...itemEl.options].some(o => o.value === it)) {
+          itemEl.add(new Option(it, it));
+        }
+        itemEl.value = it;
+      });
+      const keyEl = document.getElementById("key-item");
+      const kIt = best.itCombo[3];
+      if (kIt && ![...keyEl.options].some(o => o.value === kIt)) keyEl.add(new Option(kIt, kIt));
+      keyEl.value = kIt;
+      document.getElementById("battle-chapter").value = best.chap;
+
+      applyParty();
+
+      // 結果を表示
+      const box = document.getElementById("best-party-result");
+      box.style.display = "block";
+      box.innerHTML = `
+        <div style="font-weight:bold; color:#38bdf8; margin-bottom:4px;">★「${targetName}」の最強編成をセットしました</div>
+        <div>・出撃する章：<b>${best.chap}</b>（一番効率が良い章）</div>
+        <div>・抽選回数：最低 <b>${Number(best.stat.min.toFixed(2))}回</b> ／ 平均 <b>${Number(best.stat.avg.toFixed(2))}回</b> ／ 最大 <b>${Number(best.stat.max.toFixed(2))}回</b></div>
+        <div>・編成：${best.pCombo.map((u, idx) => `${idx + 1}体目 ${u.name}(Lv${u.lv}${best.itCombo[idx] ? "・" + best.itCombo[idx] : ""})`).join(" ／ ")} ／ 記録の鍵：${kIt || "なし"}</div>
+      `;
     }
 
       
