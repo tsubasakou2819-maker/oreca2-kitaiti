@@ -1924,6 +1924,21 @@ const FUSION_RECIPES = {
       }
       return states;
     }
+    // スライム系（レベルアップ素材として使うと消費され、相手がLvUPして抽選リセット）
+    const SLIME_LV_UP = {
+      "スライム": 1,
+      "スライム・ドラゴン": 2,
+      "スライム・シルバー": 2,
+      "スライム・ゴールド": 3,
+      "スライム・マナ": 4,
+      "スライム・アビス": 2,
+      "スライム・フレア": 2,
+      "スライム・アース": 2,
+      "スライム・エアロ": 2,
+      "スライム・デビル": 2,
+      "スライム・エンジェル": 2,
+      "スライム・トリフ": 1
+    };
 
     // モンスターごとの「1プレイあたりの最大期待合体回数（リセット連鎖込み）」を計算
     function calcOptimalFusionRolls(monsterName, isBoss, partySlots, enemyRatesMap, bossNameSet) {
@@ -2095,6 +2110,29 @@ const FUSION_RECIPES = {
             }
           }
 
+          // 遷移D: スライム系をLv10未満の手持ちに混ぜてレベルアップ（全抽選リセット）
+          const receiverIdx = slots.findIndex(s => s.lv < 10);
+          if (receiverIdx !== -1) {
+            // 手持ちのスライム系を消費
+            for (let i = 0; i < slots.length; i++) {
+              const up = SLIME_LV_UP[slots[i].name];
+              if (!up) continue;
+              // 他にLv10未満がいればそれに混ぜる（いなければ自分以外の代表1体、自分自身には混ぜない）
+              const targetIdx = slots.findIndex((s, k) => k !== i && s.lv < 10);
+              if (targetIdx === -1) continue;
+              const nSlots = slots
+                .map((s, k) => k === targetIdx ? { ...s, lv: Math.min(10, s.lv + up) } : s)
+                .filter((_, k) => k !== i);
+              tryNext(nSlots, items, enemies);
+            }
+            // 敵のスライム系を1体消費して混ぜる
+            for (const [eName, eCnt] of Object.entries(enemies)) {
+              const up = SLIME_LV_UP[eName];
+              if (!up || eCnt <= 0) continue;
+              const nSlots = slots.map((s, k) => k === receiverIdx ? { ...s, lv: Math.min(10, s.lv + up) } : s);
+              tryNext(nSlots, items, { ...enemies, [eName]: eCnt - 1 });
+            }
+          }
           const res = curPeeks + bestNext;
           memo.set(key, res);
           return res;
